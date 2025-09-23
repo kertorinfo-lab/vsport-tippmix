@@ -150,7 +150,12 @@
     };
 
     const model_Statistical_Analyst = (homeTeam, awayTeam) => {
-        if (logs.length < 5) return { error: "Nincs elég adat a statisztikai elemzéshez (minimum 5 meccs szükséges)." };
+        if (logs.length === 0) return { 
+            prediction: 'uncertain', 
+            predictedScore: '?-?', 
+            reason: 'Nincs adat a statisztikai elemzéshez.', 
+            pattern: 'Nincs Adat' 
+        };
 
         let totalHomeGoals = 0, totalAwayGoals = 0, matchCount = logs.length;
         logs.forEach(l => { totalHomeGoals += l.homeScore; totalAwayGoals += l.awayScore; });
@@ -369,9 +374,6 @@ Keresd meg azokat a meccseket az adatbázisból, amelyeknek az oddsai a leginká
 
         if (isNaN(home) || isNaN(draw) || isNaN(away) || !homeTeam || !awayTeam) {
             aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
-        }
-        if (logs.length < 5) {
-            aiResultDiv.innerHTML = `<span class="text-yellow-400">Az elemzéshez legalább 5 rögzített meccs szükséges. Jelenleg ${logs.length} van.</span>`; return;
         }
         
         aiResultDiv.innerHTML = `<div class="p-4 space-y-3">
@@ -603,6 +605,53 @@ Keresd meg azokat a meccseket az adatbázisból, amelyeknek az oddsai a leginká
     closeStatsBtn.addEventListener('click', () => { statsModal.classList.add('hidden'); });
     statsModal.addEventListener('click', (e) => { if (e.target === statsModal) { statsModal.classList.add('hidden'); } });
     
+    exportDataBtn.addEventListener('click', () => {
+        const dataStr = JSON.stringify({ logs, predictionsLog }, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'vsport_data.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        importStatus.textContent = 'Adatok exportálva!';
+        setTimeout(() => importStatus.textContent = '', 3000);
+    });
+
+    importDataBtn.addEventListener('click', () => {
+        importFileInput.click();
+    });
+
+    importFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.logs && data.predictionsLog) {
+                    logs = data.logs;
+                    predictionsLog = data.predictionsLog;
+                    saveToLocalStorage();
+                    renderLogs();
+                    importStatus.textContent = 'Adatok sikeresen importálva!';
+                } else {
+                    throw new Error('Hibás fájlformátum.');
+                }
+            } catch (error) {
+                console.error('Hiba az importálás során:', error);
+                importStatus.textContent = `Hiba: ${error.message}`;
+            } finally {
+                importFileInput.value = ''; // Reset file input
+                setTimeout(() => importStatus.textContent = '', 3000);
+            }
+        };
+        reader.readAsText(file);
+    });
+
 </script>
 
 </body>

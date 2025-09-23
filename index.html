@@ -29,7 +29,7 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .outcome-homeWin { background-color: #e8f5f9; border-left: 4px solid #4caf50; }
+        .outcome-homeWin { background-color: #e8f5e9; border-left: 4px solid #4caf50; }
         .outcome-awayWin { background-color: #ffebee; border-left: 4px solid #f44336; }
         .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
 
@@ -216,12 +216,12 @@
 
     const setCurrentUser = (user) => {
         currentUser = user;
-        sessionStorage.setItem('vsport_currentUser', JSON.stringify(user));
+        localStorage.setItem('vsport_currentUser', JSON.stringify(user));
     };
 
     const clearCurrentUser = () => {
         currentUser = null;
-        sessionStorage.removeItem('vsport_currentUser');
+        localStorage.removeItem('vsport_currentUser');
     };
 
     const handleLogin = (e) => {
@@ -255,6 +255,11 @@
         const password = document.getElementById('register-password').value;
         authError.textContent = '';
 
+        if (users.length > 0) {
+            authError.textContent = 'Már létezik fiók, több regisztráció nem lehetséges.';
+            return;
+        }
+
         if (users.some(u => u.username === username)) {
             authError.textContent = 'Ez a felhasználónév már foglalt.';
             return;
@@ -264,6 +269,11 @@
         users.push(newUser);
         saveUsers();
         setCurrentUser(newUser);
+
+        // Hide register link immediately
+        const registerP = document.querySelector('#show-register').parentElement;
+        if (registerP) registerP.style.display = 'none';
+
         welcomeMessage.textContent = `Üdvözlünk, ${newUser.username}!`;
         navigate('lobby');
     };
@@ -698,12 +708,17 @@
         loadUsers();
         loadFromLocalStorage();
 
-        const sessionUser = sessionStorage.getItem('vsport_currentUser');
-        if (sessionUser) {
-            currentUser = JSON.parse(sessionUser);
+        const rememberedUser = localStorage.getItem('vsport_currentUser');
+        if (rememberedUser) {
+            currentUser = JSON.parse(rememberedUser);
             welcomeMessage.textContent = `Üdvözlünk újra, ${currentUser.username}!`;
             navigate('lobby');
         } else {
+             // Hide registration if a user already exists, but only show this logic on auth page
+            if (users.length > 0) {
+                const registerP = document.querySelector('#show-register').parentElement;
+                if(registerP) registerP.style.display = 'none';
+            }
             navigate('auth');
         }
 

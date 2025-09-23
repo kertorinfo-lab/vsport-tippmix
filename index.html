@@ -106,7 +106,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
+        <div id="main-grid" class="grid grid-cols-1 lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
             <div class="bg-gray-800 text-white p-5 rounded-xl border border-gray-700 space-y-4 flex flex-col">
                 <h2 class="text-lg font-semibold text-center">Statisztikai AI Elemző</h2>
                 <div class="flex border-b border-gray-600 -mb-px">
@@ -116,7 +116,7 @@
                 <div id="ai-panels-container"></div>
             </div>
 
-            <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4 flex flex-col">
+            <div id="log-section" class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4 flex flex-col">
                 <h2 class="text-lg font-semibold text-slate-700">Eredmény Rögzítése</h2>
                 <div class="flex border-b border-slate-200 -mb-px">
                     <div id="log-tabs-container" class="flex items-center"></div>
@@ -127,7 +127,7 @@
             </div>
         </div>
 
-        <div>
+        <div id="database-section">
             <h2 class="text-xl font-bold text-slate-800 mb-4">Lezárt Meccsek (Adatbázis)</h2>
             <div id="log-list" class="space-y-3"></div>
         </div>
@@ -166,6 +166,9 @@
     // --- APP ELEMENTS ---
     const appWelcomeUser = document.getElementById('app-welcome-user');
     const logoutBtn = document.getElementById('logout-btn');
+    const mainGrid = document.getElementById('main-grid');
+    const logSection = document.getElementById('log-section');
+    const databaseSection = document.getElementById('database-section');
     const aiTabsContainer = document.getElementById('ai-tabs-container');
     const aiPanelsContainer = document.getElementById('ai-panels-container');
     const addAITabBtn = document.getElementById('add-ai-tab-btn');
@@ -716,10 +719,29 @@
         logoutBtn.addEventListener('click', handleLogout);
         enterAppBtn.addEventListener('click', () => {
             appWelcomeUser.textContent = `Bejelentkezve: ${currentUser.username}`;
-            // Show/hide stats button based on admin status
-            openStatsBtn.style.display = currentUser && currentUser.isAdmin ? 'flex' : 'none';
-            if (aiTabsContainer.children.length === 0) addAITab();
-            if (logTabsContainer.children.length === 0) addLogTab();
+            
+            // Show/hide admin-only sections
+            if (currentUser && currentUser.isAdmin) {
+                openStatsBtn.style.display = 'flex';
+                logSection.style.display = 'flex';
+                databaseSection.style.display = 'block';
+                mainGrid.classList.remove('lg:grid-cols-1');
+                mainGrid.classList.add('lg:grid-cols-2');
+                if (logTabsContainer.children.length === 0) {
+                    addLogTab();
+                }
+            } else {
+                openStatsBtn.style.display = 'none';
+                logSection.style.display = 'none';
+                databaseSection.style.display = 'none';
+                mainGrid.classList.remove('lg:grid-cols-2');
+                mainGrid.classList.add('lg:grid-cols-1');
+            }
+
+            if (aiTabsContainer.children.length === 0) {
+                addAITab();
+            }
+            
             navigate('app');
         });
         

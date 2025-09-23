@@ -85,8 +85,12 @@
     <div id="lobby-page" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
          <div class="text-center">
             <h1 id="welcome-message" class="text-3xl md:text-4xl font-bold text-slate-900">Üdvözlünk!</h1>
-            <p class="text-slate-500 mt-2">Készen állsz az elemzésre?</p>
+            <p id="lobby-subtitle" class="text-slate-500 mt-2">Készen állsz az elemzésre?</p>
             <button id="enter-app-btn" class="mt-8 bg-blue-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition duration-300 btn-hover hover:bg-blue-700 text-lg">Odds Elemző Indítása</button>
+            <div id="queue-status" class="hidden mt-8">
+                <p class="text-2xl font-bold text-slate-700 animate-pulse">Várakozás...</p>
+                <p class="text-lg text-slate-500 mt-2">Hely a sorban: <span id="queue-position" class="font-bold">30</span></p>
+            </div>
         </div>
     </div>
 
@@ -162,7 +166,10 @@
     // --- LOBBY ELEMENTS ---
     const welcomeMessage = document.getElementById('welcome-message');
     const enterAppBtn = document.getElementById('enter-app-btn');
-    
+    const lobbySubtitle = document.getElementById('lobby-subtitle');
+    const queueStatus = document.getElementById('queue-status');
+    const queuePositionSpan = document.getElementById('queue-position');
+
     // --- APP ELEMENTS ---
     const appWelcomeUser = document.getElementById('app-welcome-user');
     const logoutBtn = document.getElementById('logout-btn');
@@ -280,7 +287,39 @@
 
     const handleLogout = () => {
         clearCurrentUser();
+        // Reset lobby view to default state
+        enterAppBtn.classList.remove('hidden');
+        lobbySubtitle.classList.remove('hidden');
+        queueStatus.classList.add('hidden');
         navigate('auth');
+    };
+
+    const setupAndNavigateToApp = () => {
+        appWelcomeUser.textContent = `Bejelentkezve: ${currentUser.username}`;
+        
+        // Show/hide admin-only sections
+        if (currentUser && currentUser.isAdmin) {
+            openStatsBtn.style.display = 'flex';
+            logSection.style.display = 'flex';
+            databaseSection.style.display = 'block';
+            mainGrid.classList.remove('lg:grid-cols-1');
+            mainGrid.classList.add('lg:grid-cols-2');
+            if (logTabsContainer.children.length === 0) {
+                addLogTab();
+            }
+        } else {
+            openStatsBtn.style.display = 'none';
+            logSection.style.display = 'none';
+            databaseSection.style.display = 'none';
+            mainGrid.classList.remove('lg:grid-cols-2');
+            mainGrid.classList.add('lg:grid-cols-1');
+        }
+
+        if (aiTabsContainer.children.length === 0) {
+            addAITab();
+        }
+        
+        navigate('app');
     };
     
     // --- MAIN APP LOGIC (from previous version, slightly adapted) ---
@@ -732,32 +771,29 @@
         
         // Navigation buttons
         logoutBtn.addEventListener('click', handleLogout);
+        
         enterAppBtn.addEventListener('click', () => {
-            appWelcomeUser.textContent = `Bejelentkezve: ${currentUser.username}`;
-            
-            // Show/hide admin-only sections
             if (currentUser && currentUser.isAdmin) {
-                openStatsBtn.style.display = 'flex';
-                logSection.style.display = 'flex';
-                databaseSection.style.display = 'block';
-                mainGrid.classList.remove('lg:grid-cols-1');
-                mainGrid.classList.add('lg:grid-cols-2');
-                if (logTabsContainer.children.length === 0) {
-                    addLogTab();
-                }
+                setupAndNavigateToApp();
             } else {
-                openStatsBtn.style.display = 'none';
-                logSection.style.display = 'none';
-                databaseSection.style.display = 'none';
-                mainGrid.classList.remove('lg:grid-cols-2');
-                mainGrid.classList.add('lg:grid-cols-1');
-            }
+                // Start queue for regular users
+                enterAppBtn.classList.add('hidden');
+                lobbySubtitle.classList.add('hidden');
+                queueStatus.classList.remove('hidden');
 
-            if (aiTabsContainer.children.length === 0) {
-                addAITab();
+                let queuePosition = 30;
+                queuePositionSpan.textContent = queuePosition;
+
+                const queueInterval = setInterval(() => {
+                    queuePosition--;
+                    queuePositionSpan.textContent = queuePosition;
+
+                    if (queuePosition <= 0) {
+                        clearInterval(queueInterval);
+                        setupAndNavigateToApp();
+                    }
+                }, 1000);
             }
-            
-            navigate('app');
         });
         
         // AI Panel listeners

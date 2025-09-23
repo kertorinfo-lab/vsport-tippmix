@@ -4,13 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Odds Elemző - vSport AI v2</title>
+    <title>VSPORT Football</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
         }
 
         .btn-hover:hover {
@@ -28,7 +29,7 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .outcome-homeWin { background-color: #e8f5e9; border-left: 4px solid #4caf50; }
+        .outcome-homeWin { background-color: #e8f5f9; border-left: 4px solid #4caf50; }
         .outcome-awayWin { background-color: #ffebee; border-left: 4px solid #f44336; }
         .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
 
@@ -42,23 +43,70 @@
     </style>
 </head>
 
-<body class="bg-gray-100 text-slate-800 min-h-screen flex items-center justify-center p-4">
+<body class="text-slate-800">
 
-    <main class="w-full max-w-4xl bg-white rounded-2xl shadow-lg border border-gray-200 p-6 space-y-6">
+    <!-- Auth Page -->
+    <div id="auth-page" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-slate-900">VSPORT FOOTBALL</h1>
+                <p class="text-slate-500 mt-2">Jelentkezz be a folytatáshoz</p>
+            </div>
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
+                <div id="auth-forms">
+                    <!-- Login Form -->
+                    <form id="login-form" class="">
+                        <h2 class="text-2xl font-bold text-center mb-6">Bejelentkezés</h2>
+                        <div class="space-y-4">
+                            <input type="text" id="login-username" placeholder="Felhasználónév" required class="w-full px-4 py-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-400">
+                            <input type="password" id="login-password" placeholder="Jelszó" required class="w-full px-4 py-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <button type="submit" class="w-full mt-6 bg-purple-600 text-white font-semibold py-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-purple-700">Bejelentkezés</button>
+                        <p class="text-center text-sm text-slate-500 mt-4">Nincs még fiókod? <a href="#" id="show-register" class="font-semibold text-purple-600 hover:underline">Regisztrálj!</a></p>
+                    </form>
 
+                    <!-- Register Form -->
+                    <form id="register-form" class="hidden">
+                        <h2 class="text-2xl font-bold text-center mb-6">Regisztráció</h2>
+                         <div class="space-y-4">
+                            <input type="text" id="register-username" placeholder="Felhasználónév" required class="w-full px-4 py-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-400">
+                            <input type="password" id="register-password" placeholder="Jelszó" required class="w-full px-4 py-3 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-400">
+                        </div>
+                        <button type="submit" class="w-full mt-6 bg-purple-600 text-white font-semibold py-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-purple-700">Regisztráció</button>
+                        <p class="text-center text-sm text-slate-500 mt-4">Már van fiókod? <a href="#" id="show-login" class="font-semibold text-purple-600 hover:underline">Jelentkezz be!</a></p>
+                    </form>
+                </div>
+                <p id="auth-error" class="text-red-500 text-sm text-center mt-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lobby Page -->
+    <div id="lobby-page" class="hidden min-h-screen flex flex-col items-center justify-center p-4">
+         <div class="text-center">
+            <h1 id="welcome-message" class="text-3xl md:text-4xl font-bold text-slate-900">Üdvözlünk!</h1>
+            <p class="text-slate-500 mt-2">Készen állsz az elemzésre?</p>
+            <button id="enter-app-btn" class="mt-8 bg-blue-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition duration-300 btn-hover hover:bg-blue-700 text-lg">Odds Elemző Indítása</button>
+        </div>
+    </div>
+
+    <!-- App Page -->
+    <main id="app-page" class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-lg border border-gray-200 p-6 space-y-6 mx-auto my-4">
         <div class="flex justify-between items-center">
              <div class="text-left">
                 <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Odds Elemző</h1>
-                <p class="text-slate-500 mt-1">vSport Modellekkel v2</p>
+                <p id="app-welcome-user" class="text-slate-500 mt-1"></p>
             </div>
-            <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
-                <span>Statisztika</span>
-            </button>
+            <div>
+                <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
+                    <span>Statisztika</span>
+                </button>
+                 <button id="logout-btn" class="mt-2 bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-red-600 text-sm">Kijelentkezés</button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-6 space-y-6 lg:space-y-0">
-
             <div class="bg-gray-800 text-white p-5 rounded-xl border border-gray-700 space-y-4 flex flex-col">
                 <h2 class="text-lg font-semibold text-center">Statisztikai AI Elemző</h2>
                 <div class="flex border-b border-gray-600 -mb-px">
@@ -94,36 +142,135 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div id="stats-content" class="p-6 overflow-y-auto space-y-6">
-                <!-- Stats content will be generated here -->
-            </div>
+            <div id="stats-content" class="p-6 overflow-y-auto space-y-6"></div>
         </div>
     </div>
 
 <script>
-    // --- VÁLTOZÓK ÉS ELEMEK ---
+    // --- PAGE CONTAINERS ---
+    const authPage = document.getElementById('auth-page');
+    const lobbyPage = document.getElementById('lobby-page');
+    const appPage = document.getElementById('app-page');
+
+    // --- AUTH ELEMENTS ---
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const showRegisterLink = document.getElementById('show-register');
+    const showLoginLink = document.getElementById('show-login');
+    const authError = document.getElementById('auth-error');
+
+    // --- LOBBY ELEMENTS ---
+    const welcomeMessage = document.getElementById('welcome-message');
+    const enterAppBtn = document.getElementById('enter-app-btn');
+    
+    // --- APP ELEMENTS ---
+    const appWelcomeUser = document.getElementById('app-welcome-user');
+    const logoutBtn = document.getElementById('logout-btn');
     const aiTabsContainer = document.getElementById('ai-tabs-container');
     const aiPanelsContainer = document.getElementById('ai-panels-container');
     const addAITabBtn = document.getElementById('add-ai-tab-btn');
-    let activeAITabId = null;
-
     const logTabsContainer = document.getElementById('log-tabs-container');
     const logPanelsContainer = document.getElementById('log-panels-container');
     const addTabBtn = document.getElementById('add-tab-btn');
     const addLogBtn = document.getElementById('add-log-btn');
     const logListDiv = document.getElementById('log-list');
-    
     const statsModal = document.getElementById('stats-modal');
     const openStatsBtn = document.getElementById('open-stats-btn');
     const closeStatsBtn = document.getElementById('close-stats-btn');
     const statsContent = document.getElementById('stats-content');
 
+    // --- APP STATE ---
     let logs = [];
     let predictionsLog = [];
+    let users = [];
+    let currentUser = null;
+    let activeAITabId = null;
     let activeLogTabId = null;
     let analysisTimeout;
 
-    // --- FŐ FÜGGVÉNYEK ---
+    // --- PAGE NAVIGATION ---
+    const navigate = (page) => {
+        authPage.classList.add('hidden');
+        lobbyPage.classList.add('hidden');
+        appPage.classList.add('hidden');
+
+        if (page === 'auth') authPage.classList.remove('hidden');
+        if (page === 'lobby') lobbyPage.classList.remove('hidden');
+        if (page === 'app') appPage.classList.remove('hidden');
+    };
+
+    // --- AUTHENTICATION LOGIC ---
+    const saveUsers = () => {
+        localStorage.setItem('vsport_users', JSON.stringify(users));
+    };
+
+    const loadUsers = () => {
+        const storedUsers = localStorage.getItem('vsport_users');
+        if (storedUsers) {
+            users = JSON.parse(storedUsers);
+        }
+    };
+
+    const setCurrentUser = (user) => {
+        currentUser = user;
+        sessionStorage.setItem('vsport_currentUser', JSON.stringify(user));
+    };
+
+    const clearCurrentUser = () => {
+        currentUser = null;
+        sessionStorage.removeItem('vsport_currentUser');
+    };
+
+    const handleLogin = (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        authError.textContent = '';
+
+        // Special admin login
+        if (username === 'krisztian' && password === 'fonix') {
+            const adminUser = { username: 'krisztian', isAdmin: true };
+            setCurrentUser(adminUser);
+            welcomeMessage.textContent = `Üdvözlünk, ${adminUser.username}! (Admin)`;
+            navigate('lobby');
+            return;
+        }
+
+        const user = users.find(u => u.username === username && u.password === password);
+        if (user) {
+            setCurrentUser(user);
+            welcomeMessage.textContent = `Üdvözlünk, ${user.username}!`;
+            navigate('lobby');
+        } else {
+            authError.textContent = 'Hibás felhasználónév vagy jelszó.';
+        }
+    };
+
+    const handleRegister = (e) => {
+        e.preventDefault();
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        authError.textContent = '';
+
+        if (users.some(u => u.username === username)) {
+            authError.textContent = 'Ez a felhasználónév már foglalt.';
+            return;
+        }
+        
+        const newUser = { username, password, isAdmin: false };
+        users.push(newUser);
+        saveUsers();
+        setCurrentUser(newUser);
+        welcomeMessage.textContent = `Üdvözlünk, ${newUser.username}!`;
+        navigate('lobby');
+    };
+
+    const handleLogout = () => {
+        clearCurrentUser();
+        navigate('auth');
+    };
+    
+    // --- MAIN APP LOGIC (from previous version, slightly adapted) ---
     const formatTimestamp = (isoString) => new Date(isoString).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' });
 
     const renderLogs = () => {
@@ -137,7 +284,6 @@
             const card = document.createElement('div');
             const outcomeClass = log.outcome ? `outcome-${log.outcome}` : 'bg-gray-100 border-gray-300';
             card.className = `p-3 rounded-lg border shadow-sm transition duration-300 card-hover ${outcomeClass}`;
-            
             card.innerHTML = `
                 <div class="flex items-start justify-between">
                     <div>
@@ -149,8 +295,7 @@
                     <button data-id="${log.id}" class="delete-log-btn text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
-                </div>
-            `;
+                </div>`;
             logListDiv.appendChild(card);
         });
     };
@@ -172,9 +317,8 @@
         renderLogs();
     };
 
-    // --- STATISZTIKAI AI ELEMZŐ ---
-    
     const runAIAnalysis = (activePanel) => {
+        // ... (This function is identical to the previous version, so it's omitted here for brevity, but it is included in the final code)
         if (!activePanel) return;
 
         const homeTeamInput = activePanel.querySelector('.ai-home-team');
@@ -201,10 +345,8 @@
 
         aiResultDiv.innerHTML = '<span>Statisztikai modellek futtatása...</span>';
 
-        // Use setTimeout to ensure the UI updates with the "loading" message before running the potentially blocking analysis code.
         setTimeout(() => {
             try {
-                // Modellek futtatása
                 const vSportModelResult = model_vSport_Pattern(home, draw, away);
                 const historyModelResult = model_TeamHistory(homeTeam, awayTeam);
                 
@@ -226,55 +368,41 @@
                             <div class="absolute top-2 right-2 flex space-x-1 prediction-controls">
                                 <button class="record-prediction-btn p-1.5 bg-green-600/50 text-white rounded-full hover:bg-green-600 transition" 
                                         title="Helyes tipp"
-                                        data-outcome="correct"
-                                        data-model-name="${model}"
-                                        data-teams="${teams}"
-                                        data-odds='${odds}'
-                                        data-prediction="${result.prediction}"
-                                        data-pattern="${result.pattern || 'N/A'}">
+                                        data-outcome="correct" data-model-name="${model}" data-teams="${teams}" data-odds='${odds}' data-prediction="${result.prediction}" data-pattern="${result.pattern || 'N/A'}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
                                 </button>
                                 <button class="record-prediction-btn p-1.5 bg-red-600/50 text-white rounded-full hover:bg-red-600 transition"
                                         title="Helytelen tipp"
-                                        data-outcome="incorrect"
-                                        data-model-name="${model}"
-                                        data-teams="${teams}"
-                                        data-odds='${odds}'
-                                        data-prediction="${result.prediction}"
-                                        data-pattern="${result.pattern || 'N/A'}">
+                                        data-outcome="incorrect" data-model-name="${model}" data-teams="${teams}" data-odds='${odds}' data-prediction="${result.prediction}" data-pattern="${result.pattern || 'N/A'}">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>` : ''}
-                        </div>
-                    `;
+                        </div>`;
                 };
                 
                 aiResultDiv.innerHTML = `
                     <div class="space-y-3">
                         ${createPredictionCard('vSport Minta Elemző', vSportModelResult)}
                         ${createPredictionCard('Csapat Múltja Elemző', historyModelResult)}
-                    </div>
-                `;
+                    </div>`;
             } catch (error) {
                 console.error("AI Elemzési Hiba:", error);
                 aiResultDiv.innerHTML = `<div class="p-3 bg-red-900/50 rounded-lg text-red-300 text-sm text-left">
                     <p class="font-bold">Hiba történt az elemzés során!</p>
-                    <p class="text-xs mt-1">Lehetséges ok: hibásan rögzített meccsnév az adatbázisban. Ellenőrizd a konzolt a részletekért.</p>
+                    <p class="text-xs mt-1">Lehetséges ok: hibásan rögzített meccsnév az adatbázisban.</p>
                     <p class="text-xs font-mono mt-2">${error.message}</p>
                 </div>`;
             }
-        }, 50); // 50ms delay
+        }, 50);
     };
-
-    // --- STATISZTIKAI MODELLEK ---
-
+    
+    // --- MODELS (Identical to previous version) ---
     const model_vSport_Pattern = (home, draw, away) => {
         const calculateAvgGoals = (matches) => {
             if (!matches || matches.length === 0) return 0;
             const totalGoals = matches.reduce((sum, match) => sum + match.homeScore + match.awayScore, 0);
             return (totalGoals / matches.length).toFixed(2);
         };
-
         const minOdd = Math.min(home, draw, away);
         if (minOdd < 1.35) {
             const heavyFavoritesInDb = logs.filter(l => Math.min(l.home, l.draw, l.away) < 1.35);
@@ -290,7 +418,6 @@
                 }
             }
         }
-
         if (Math.abs(home - away) < 0.25 && home < 3.0) {
             const similarMatches = logs.filter(l => Math.abs(l.home - l.away) < 0.25 && l.home < 3.0);
             if (similarMatches.length > 10) {
@@ -303,7 +430,6 @@
                 }
             }
         }
-        
         if (draw > 5.0 && Math.abs(home - away) < 0.5) {
             const similarMatches = logs.filter(l => l.draw > 5.0 && Math.abs(l.home - l.away) < 0.5);
             if (similarMatches.length >= 5) {
@@ -314,7 +440,6 @@
                 }
             }
         }
-
         const getProfile = (h, d, a) => {
             if (Math.min(h, a) < 1.6) return 'Nagy Esélyes';
             if (Math.abs(h - a) < 0.5) return 'Kiegyenlített';
@@ -322,38 +447,30 @@
         };
         const targetProfile = getProfile(home, draw, away);
         const profiledMatches = logs.filter(l => getProfile(l.home, l.draw, l.away) === targetProfile);
-        
         if (profiledMatches.length < 3) {
             return { prediction: 'uncertain', pattern: 'Szokatlan alakzat', reason: `Jelzés: 'Szokatlan alakzat'. Ez egy ritka odds kombináció (${targetProfile}), a statisztika megbízhatatlan.` };
         }
-        
         const similarMatches = profiledMatches.map(log => {
             const distance = Math.sqrt(Math.pow(log.home - home, 2) + Math.pow(log.draw - draw, 2) + Math.pow(log.away - away, 2));
             return { ...log, distance };
         }).sort((a, b) => a.distance - b.distance).slice(0, 10);
-
         const outcomeCounts = { homeWin: 0, draw: 0, awayWin: 0 };
         similarMatches.forEach(match => { if(match.outcome) outcomeCounts[match.outcome]++; });
-        
         const winner = Object.keys(outcomeCounts).reduce((a, b) => outcomeCounts[a] > outcomeCounts[b] ? a : b);
         const avgGoals = calculateAvgGoals(similarMatches);
         const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)'};
         return { prediction: winner, pattern: `Általános (${targetProfile})`, reason: `Általános elemzés ('${targetProfile}' profil): A legközelebbi meccsek alapján a ${outcomeMap[winner]} a legvalószínűbb. Gólátlag: ${avgGoals}.` };
     };
-
     const model_TeamHistory = (homeTeam, awayTeam) => {
         const homeMatches = logs.filter(l => l.name && l.name.includes(homeTeam)).slice(0, 5);
         const awayMatches = logs.filter(l => l.name && l.name.includes(awayTeam)).slice(0, 5);
         const h2hMatches = logs.filter(l => l.name && l.name.includes(homeTeam) && l.name.includes(awayTeam));
-
-        // H2H
         let h2hHomeWins = 0, h2hAwayWins = 0, h2hDraws = 0;
         let h2hHomeGoals = 0, h2hAwayGoals = 0;
         h2hMatches.forEach(match => {
             const teams = match.name.split(' - ').map(t => t.trim());
-            if (teams.length < 2) return; // Skip malformed entries
+            if (teams.length < 2) return;
             const isHomeTeamFirst = teams[0].toLowerCase() === homeTeam.toLowerCase();
-            
             const homeScore = isHomeTeamFirst ? match.homeScore : match.awayScore;
             const awayScore = isHomeTeamFirst ? match.awayScore : match.homeScore;
             h2hHomeGoals += homeScore;
@@ -363,8 +480,6 @@
             else h2hAwayWins++;
         });
         const h2hAvgGoals = h2hMatches.length > 0 ? (h2hHomeGoals + h2hAwayGoals) / h2hMatches.length : 0;
-
-        // Forma
         let homeFormPoints = 0, homeFormGf = 0;
         homeMatches.forEach(match => {
             const isHome = match.name.toLowerCase().startsWith(homeTeam.toLowerCase());
@@ -373,7 +488,6 @@
             homeFormGf += isHome ? match.homeScore : match.awayScore;
         });
         const homeFormPercentage = homeMatches.length > 0 ? ((homeFormPoints / (homeMatches.length * 3)) * 100).toFixed(0) : 0;
-
         let awayFormPoints = 0, awayFormGf = 0;
         awayMatches.forEach(match => {
             const isHome = match.name.toLowerCase().startsWith(awayTeam.toLowerCase());
@@ -382,16 +496,13 @@
             awayFormGf += isHome ? match.homeScore : match.awayScore;
         });
         const awayFormPercentage = awayMatches.length > 0 ? ((awayFormPoints / (awayMatches.length * 3)) * 100).toFixed(0) : 0;
-        
         const h2hWeight = h2hMatches.length > 0 ? 0.4 : 0;
         const formWeight = 1 - h2hWeight;
         const expectedHomeScore = (homeMatches.length > 0 ? (homeFormGf / homeMatches.length) * formWeight : 1.3 * formWeight) + ((h2hHomeGoals / h2hMatches.length || 0) * h2hWeight);
         const expectedAwayScore = (awayMatches.length > 0 ? (awayFormGf / awayMatches.length) * formWeight : 1.1 * formWeight) + ((h2hAwayGoals / h2hMatches.length || 0) * h2hWeight);
-
         let prediction = 'draw';
         if (expectedHomeScore > expectedAwayScore + 0.35) prediction = 'homeWin';
         else if (expectedAwayScore > expectedHomeScore + 0.35) prediction = 'awayWin';
-
         const reason = `H2H (${h2hMatches.length} meccs): ${h2hHomeWins}-${h2hDraws}-${h2hAwayWins}, ${h2hAvgGoals.toFixed(1)} gól/meccs. Forma: ${homeFormPercentage}% vs ${awayFormPercentage}%.`;
         return {
             prediction,
@@ -401,7 +512,8 @@
         };
     };
 
-    // --- UI ÉS SEGÉDFÜGGVÉNYEK ---
+    // --- UI HELPER FUNCTIONS ---
+    // ... (These functions are identical to the previous version, so they are omitted for brevity but included in the final code)
     const addAITab = () => {
         const tabId = Date.now().toString();
         const tabCount = aiTabsContainer.children.length + 1;
@@ -422,8 +534,7 @@
                 <input type="text" inputmode="decimal" placeholder="Döntetlen (X)" class="ai-input ai-draw w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-teal-400 text-white">
                 <input type="text" inputmode="decimal" placeholder="Vendég (2)" class="ai-input ai-away w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-teal-400 text-white">
             </div>
-            <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-center min-h-[180px]"></div>
-        `;
+            <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-center min-h-[180px]"></div>`;
         aiTabsContainer.appendChild(tab);
         aiPanelsContainer.appendChild(panel);
         switchAITab(tabId);
@@ -433,9 +544,7 @@
         aiTabsContainer.querySelectorAll('.tab').forEach(t => {
             const isActive = t.dataset.id === tabId;
             t.classList.toggle('active', isActive);
-            t.style.backgroundColor = isActive ? '#1f2937' : '';
-            t.style.borderColor = isActive ? '#4b5563' : '#4b5563';
-            t.style.borderBottomColor = isActive ? '#1f2937' : '#4b5563';
+            t.style.backgroundColor = isActive ? '#1f2937' : ''; t.style.borderColor = isActive ? '#4b5563' : '#4b5563'; t.style.borderBottomColor = isActive ? '#1f2937' : '#4b5563';
         });
         aiPanelsContainer.querySelectorAll('.ai-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.id === tabId));
     };
@@ -448,11 +557,9 @@
             const firstTab = aiTabsContainer.querySelector('.tab');
             if (firstTab) switchAITab(firstTab.dataset.id); else if (aiTabsContainer.children.length === 0) addAITab();
         }
-        // Re-number tabs
         aiTabsContainer.querySelectorAll('.tab').forEach((t, index) => {
             const closeSpan = t.querySelector('.close-tab');
-            t.innerHTML = `Tipp ${index + 1} `;
-            t.appendChild(closeSpan);
+            t.innerHTML = `Tipp ${index + 1} `; t.appendChild(closeSpan);
         });
     };
     const addLogFromTabs = () => {
@@ -478,16 +585,10 @@
             logs.unshift(...newLogs);
             saveToLocalStorage();
             renderLogs();
-            logTabsContainer.innerHTML = '';
-            logPanelsContainer.innerHTML = '';
-            addLogTab();
+            logTabsContainer.innerHTML = ''; logPanelsContainer.innerHTML = ''; addLogTab();
         }
     };
-    const deleteLog = (id) => {
-        logs = logs.filter(l => l.id !== parseFloat(id));
-        saveToLocalStorage();
-        renderLogs();
-    };
+    const deleteLog = (id) => { logs = logs.filter(l => l.id !== parseFloat(id)); saveToLocalStorage(); renderLogs(); };
     const addLogTab = () => {
         const tabId = Date.now().toString();
         const tabCount = logTabsContainer.children.length + 1;
@@ -512,8 +613,7 @@
                     <input type="number" placeholder="Vendég gólok" class="log-away-score w-full px-3 py-2 text-sm rounded-lg border border-slate-300">
                 </div>
             </div>
-            <input type="datetime-local" class="log-datetime w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white">
-        `;
+            <input type="datetime-local" class="log-datetime w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white">`;
         logTabsContainer.appendChild(tab);
         logPanelsContainer.appendChild(panel);
         switchLogTab(tabId);
@@ -532,84 +632,49 @@
             const firstTab = logTabsContainer.querySelector('.tab');
             if (firstTab) switchLogTab(firstTab.dataset.id); else if (logTabsContainer.children.length === 0) addLogTab();
         }
-         // Re-number tabs
         logTabsContainer.querySelectorAll('.tab').forEach((t, index) => {
             const closeSpan = t.querySelector('.close-tab');
-            t.innerHTML = `Meccs ${index + 1} `;
-            t.appendChild(closeSpan);
+            t.innerHTML = `Meccs ${index + 1} `; t.appendChild(closeSpan);
         });
     };
-
     const renderStatistics = () => {
         if (predictionsLog.length === 0) {
             statsContent.innerHTML = `<p class="text-center text-slate-500 py-8">Nincsenek rögzített AI tippek a statisztikához.</p>`;
             return;
         }
-
-        const stats = {
-            'vSport Minta Elemző': { total: 0, correct: 0, patterns: {}, teams: {} },
-            'Csapat Múltja Elemző': { total: 0, correct: 0, patterns: {}, teams: {} },
-        };
-
+        const stats = { 'vSport Minta Elemző': { total: 0, correct: 0, patterns: {}, teams: {} }, 'Csapat Múltja Elemző': { total: 0, correct: 0, patterns: {}, teams: {} } };
         predictionsLog.forEach(p => {
-            const modelStat = stats[p.modelName];
-            if (!modelStat) return;
-
-            modelStat.total++;
-            if (p.outcome === 'correct') modelStat.correct++;
-
-            // Pattern stats
+            const modelStat = stats[p.modelName]; if (!modelStat) return;
+            modelStat.total++; if (p.outcome === 'correct') modelStat.correct++;
             const pattern = p.pattern || 'N/A';
             if (!modelStat.patterns[pattern]) modelStat.patterns[pattern] = { total: 0, correct: 0 };
-            modelStat.patterns[pattern].total++;
-            if (p.outcome === 'correct') modelStat.patterns[pattern].correct++;
-
-            // Team stats
+            modelStat.patterns[pattern].total++; if (p.outcome === 'correct') modelStat.patterns[pattern].correct++;
             const teams = p.teams.split(' - ');
             teams.forEach(team => {
-                const teamName = team.trim();
-                if (!teamName) return;
+                const teamName = team.trim(); if (!teamName) return;
                 if (!modelStat.teams[teamName]) modelStat.teams[teamName] = { total: 0, correct: 0 };
-                modelStat.teams[teamName].total++;
-                if (p.outcome === 'correct') modelStat.teams[teamName].correct++;
+                modelStat.teams[teamName].total++; if (p.outcome === 'correct') modelStat.teams[teamName].correct++;
             });
         });
-        
         const createTableHTML = (title, data) => {
-            const sortedData = Object.entries(data).sort(([, a], [, b]) => b.total - a.total).slice(0, 15); // Show top 15
+            const sortedData = Object.entries(data).sort(([, a], [, b]) => b.total - a.total).slice(0, 15);
             if(sortedData.length === 0) return '';
             return `
                 <div class="mt-4">
                     <h4 class="font-semibold text-slate-600 mb-2">${title}</h4>
                     <div class="overflow-hidden border border-gray-200 rounded-lg">
                         <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-2 text-left font-medium text-gray-500">Név</th>
-                                    <th class="px-4 py-2 text-right font-medium text-gray-500">Találat / Összes</th>
-                                    <th class="px-4 py-2 text-right font-medium text-gray-500">Siker (%)</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-50"><tr><th class="px-4 py-2 text-left font-medium text-gray-500">Név</th><th class="px-4 py-2 text-right font-medium text-gray-500">Találat / Összes</th><th class="px-4 py-2 text-right font-medium text-gray-500">Siker (%)</th></tr></thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
-                                ${sortedData.map(([name, {total, correct}]) => `
-                                    <tr>
-                                        <td class="px-4 py-2 font-medium text-gray-900">${name}</td>
-                                        <td class="px-4 py-2 text-right text-gray-700">${correct} / ${total}</td>
-                                        <td class="px-4 py-2 text-right text-gray-700 font-semibold">${((correct/total)*100).toFixed(1)}%</td>
-                                    </tr>
-                                `).join('')}
+                                ${sortedData.map(([name, {total, correct}]) => `<tr><td class="px-4 py-2 font-medium text-gray-900">${name}</td><td class="px-4 py-2 text-right text-gray-700">${correct} / ${total}</td><td class="px-4 py-2 text-right text-gray-700 font-semibold">${((correct/total)*100).toFixed(1)}%</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>
-                </div>
-            `;
+                </div>`;
         };
-        
         let finalHTML = '';
         for (const modelName in stats) {
-            const modelStat = stats[modelName];
-            if (modelStat.total === 0) continue;
-            
+            const modelStat = stats[modelName]; if (modelStat.total === 0) continue;
             const successRate = modelStat.total > 0 ? ((modelStat.correct / modelStat.total) * 100).toFixed(1) : 0;
             finalHTML += `
                 <div class="bg-slate-50 p-4 rounded-lg border">
@@ -620,83 +685,89 @@
                     </div>
                     ${createTableHTML('Teljesítmény minták szerint', modelStat.patterns)}
                     ${createTableHTML('Teljesítmény csapatok szerint', modelStat.teams)}
-                </div>
-            `;
+                </div>`;
         }
         statsContent.innerHTML = finalHTML || `<p class="text-center text-slate-500 py-8">Nincsenek rögzített AI tippek a statisztikához.</p>`;
     };
     
-
-    // --- ESEMÉNYKEZELŐK ---
+    // --- INITIALIZATION AND EVENT LISTENERS ---
     document.addEventListener('DOMContentLoaded', () => {
+        loadUsers();
         loadFromLocalStorage();
-        if (logTabsContainer.children.length === 0) addLogTab();
-        if (aiTabsContainer.children.length === 0) addAITab();
-    });
-    aiPanelsContainer.addEventListener('input', e => {
-        if (e.target.classList.contains('ai-input')) {
-            clearTimeout(analysisTimeout);
-            const activePanel = e.target.closest('.ai-tab-panel');
-            analysisTimeout = setTimeout(() => runAIAnalysis(activePanel), 500);
-        }
-    });
-    aiPanelsContainer.addEventListener('click', e => {
-        const btn = e.target.closest('.record-prediction-btn');
-        if (btn) {
-            const newPrediction = {
-                id: Date.now() + Math.random(),
-                outcome: btn.dataset.outcome,
-                modelName: btn.dataset.modelName,
-                teams: btn.dataset.teams,
-                odds: JSON.parse(btn.dataset.odds),
-                prediction: btn.dataset.prediction,
-                pattern: btn.dataset.pattern,
-                timestamp: new Date().toISOString()
-            };
-            predictionsLog.unshift(newPrediction);
-            saveToLocalStorage();
-            
-            // Provide visual feedback
-            const controls = btn.parentElement;
-            controls.innerHTML = `<span class="text-xs text-green-400 p-1">Mentve!</span>`;
-        }
-    });
 
-    addLogBtn.addEventListener('click', addLogFromTabs);
-    addTabBtn.addEventListener('click', addLogTab);
-    addAITabBtn.addEventListener('click', addAITab);
-    
-    logTabsContainer.addEventListener('click', e => {
-        const tab = e.target.closest('.tab');
-        if (tab && !e.target.classList.contains('close-tab')) switchLogTab(tab.dataset.id);
-        const closeBtn = e.target.closest('.close-tab');
-        if (closeBtn) closeLogTab(closeBtn.parentElement.dataset.id);
-    });
-    aiTabsContainer.addEventListener('click', e => {
-        const tab = e.target.closest('.tab');
-        if (tab && !e.target.classList.contains('close-tab')) switchAITab(tab.dataset.id);
-        const closeBtn = e.target.closest('.close-tab');
-        if (closeBtn) closeAITab(closeBtn.parentElement.dataset.id);
-    });
-    logListDiv.addEventListener('click', e => {
-        const btn = e.target.closest('.delete-log-btn');
-        if (btn) deleteLog(btn.dataset.id);
-    });
-    
-    // Statisztika modal eseménykezelők
-    openStatsBtn.addEventListener('click', () => {
-        renderStatistics();
-        statsModal.classList.remove('hidden');
-    });
-    closeStatsBtn.addEventListener('click', () => {
-        statsModal.classList.add('hidden');
-    });
-    statsModal.addEventListener('click', (e) => {
-        if (e.target === statsModal) {
-            statsModal.classList.add('hidden');
+        const sessionUser = sessionStorage.getItem('vsport_currentUser');
+        if (sessionUser) {
+            currentUser = JSON.parse(sessionUser);
+            welcomeMessage.textContent = `Üdvözlünk újra, ${currentUser.username}!`;
+            navigate('lobby');
+        } else {
+            navigate('auth');
         }
-    });
 
+        // Auth form toggling
+        showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); authError.textContent = ''; });
+        showLoginLink.addEventListener('click', (e) => { e.preventDefault(); registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); authError.textContent = ''; });
+        
+        // Form submissions
+        loginForm.addEventListener('submit', handleLogin);
+        registerForm.addEventListener('submit', handleRegister);
+        
+        // Navigation buttons
+        logoutBtn.addEventListener('click', handleLogout);
+        enterAppBtn.addEventListener('click', () => {
+            appWelcomeUser.textContent = `Bejelentkezve: ${currentUser.username}`;
+            // Show/hide stats button based on admin status
+            openStatsBtn.style.display = currentUser && currentUser.isAdmin ? 'flex' : 'none';
+            if (aiTabsContainer.children.length === 0) addAITab();
+            if (logTabsContainer.children.length === 0) addLogTab();
+            navigate('app');
+        });
+        
+        // AI Panel listeners
+        aiPanelsContainer.addEventListener('input', e => {
+            if (e.target.classList.contains('ai-input')) {
+                clearTimeout(analysisTimeout);
+                const activePanel = e.target.closest('.ai-tab-panel');
+                analysisTimeout = setTimeout(() => runAIAnalysis(activePanel), 500);
+            }
+        });
+        aiPanelsContainer.addEventListener('click', e => {
+            const btn = e.target.closest('.record-prediction-btn');
+            if (btn) {
+                const newPrediction = { id: Date.now() + Math.random(), outcome: btn.dataset.outcome, modelName: btn.dataset.modelName, teams: btn.dataset.teams, odds: JSON.parse(btn.dataset.odds), prediction: btn.dataset.prediction, pattern: btn.dataset.pattern, timestamp: new Date().toISOString() };
+                predictionsLog.unshift(newPrediction);
+                saveToLocalStorage();
+                const controls = btn.parentElement;
+                controls.innerHTML = `<span class="text-xs text-green-400 p-1">Mentve!</span>`;
+            }
+        });
+
+        // App button listeners
+        addLogBtn.addEventListener('click', addLogFromTabs);
+        addTabBtn.addEventListener('click', addLogTab);
+        addAITabBtn.addEventListener('click', addAITab);
+        logTabsContainer.addEventListener('click', e => {
+            const tab = e.target.closest('.tab');
+            if (tab && !e.target.classList.contains('close-tab')) switchLogTab(tab.dataset.id);
+            const closeBtn = e.target.closest('.close-tab');
+            if (closeBtn) closeLogTab(closeBtn.parentElement.dataset.id);
+        });
+        aiTabsContainer.addEventListener('click', e => {
+            const tab = e.target.closest('.tab');
+            if (tab && !e.target.classList.contains('close-tab')) switchAITab(tab.dataset.id);
+            const closeBtn = e.target.closest('.close-tab');
+            if (closeBtn) closeAITab(closeBtn.parentElement.dataset.id);
+        });
+        logListDiv.addEventListener('click', e => {
+            const btn = e.target.closest('.delete-log-btn');
+            if (btn) deleteLog(btn.dataset.id);
+        });
+        
+        // Stats modal listeners
+        openStatsBtn.addEventListener('click', () => { renderStatistics(); statsModal.classList.remove('hidden'); });
+        closeStatsBtn.addEventListener('click', () => { statsModal.classList.add('hidden'); });
+        statsModal.addEventListener('click', (e) => { if (e.target === statsModal) { statsModal.classList.add('hidden'); } });
+    });
 </script>
 
 </body>

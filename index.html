@@ -40,6 +40,11 @@
         
         #stats-modal { transition: opacity 0.3s ease-in-out; }
         #stats-modal.hidden { pointer-events: none; }
+
+        #enter-app-btn:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -87,22 +92,22 @@
             <h1 id="welcome-message" class="text-3xl md:text-4xl font-bold text-slate-900">Üdvözlünk!</h1>
             <p id="lobby-subtitle" class="text-slate-500 mt-2">Készen állsz az elemzésre?</p>
             <button id="enter-app-btn" class="mt-8 bg-blue-600 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition duration-300 btn-hover hover:bg-blue-700 text-lg">Odds Elemző Indítása</button>
-            <div id="queue-status" class="hidden mt-8">
-                <p class="text-2xl font-bold text-slate-700 animate-pulse">Várakozás...</p>
-                <p class="text-lg text-slate-500 mt-2">Hely a sorban: <span id="queue-position" class="font-bold">30</span></p>
-            </div>
         </div>
     </div>
 
     <!-- App Page -->
     <main id="app-page" class="hidden w-full max-w-4xl bg-white rounded-2xl shadow-lg border border-gray-200 p-6 space-y-6 mx-auto my-4">
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-start">
              <div class="text-left">
                 <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Odds Elemző</h1>
                 <p id="app-welcome-user" class="text-slate-500 mt-1"></p>
             </div>
-            <div>
-                <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2">
+            <div class="text-right">
+                <div id="admin-controls" class="hidden mb-2">
+                    <button id="session-control-btn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-green-700 text-sm">Elemzés Indítása</button>
+                    <p id="session-status-text" class="text-xs text-slate-500 mt-1">A rendszer jelenleg zárva.</p>
+                </div>
+                <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2 ml-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
                     <span>Statisztika</span>
                 </button>
@@ -167,12 +172,13 @@
     const welcomeMessage = document.getElementById('welcome-message');
     const enterAppBtn = document.getElementById('enter-app-btn');
     const lobbySubtitle = document.getElementById('lobby-subtitle');
-    const queueStatus = document.getElementById('queue-status');
-    const queuePositionSpan = document.getElementById('queue-position');
 
     // --- APP ELEMENTS ---
     const appWelcomeUser = document.getElementById('app-welcome-user');
     const logoutBtn = document.getElementById('logout-btn');
+    const adminControls = document.getElementById('admin-controls');
+    const sessionControlButton = document.getElementById('session-control-btn');
+    const sessionStatusText = document.getElementById('session-status-text');
     const mainGrid = document.getElementById('main-grid');
     const logSection = document.getElementById('log-section');
     const databaseSection = document.getElementById('database-section');
@@ -197,16 +203,31 @@
     let activeAITabId = null;
     let activeLogTabId = null;
     let analysisTimeout;
+    let lobbyPollInterval;
 
     // --- PAGE NAVIGATION ---
     const navigate = (page) => {
         authPage.classList.add('hidden');
         lobbyPage.classList.add('hidden');
         appPage.classList.add('hidden');
+        clearInterval(lobbyPollInterval);
 
-        if (page === 'auth') authPage.classList.remove('hidden');
-        if (page === 'lobby') lobbyPage.classList.remove('hidden');
-        if (page === 'app') appPage.classList.remove('hidden');
+        if (page === 'auth') {
+             authPage.classList.remove('hidden');
+        }
+        if (page === 'lobby') {
+            lobbyPage.classList.remove('hidden');
+            if (currentUser && !currentUser.isAdmin) {
+                lobbyPollInterval = setInterval(checkAppStatus, 2000);
+                checkAppStatus();
+            } else {
+                 enterAppBtn.disabled = false;
+                 lobbySubtitle.textContent = 'Készen állsz az elemzésre?';
+            }
+        }
+        if (page === 'app') {
+            appPage.classList.remove('hidden');
+        }
     };
 
     // --- AUTHENTICATION LOGIC ---
@@ -277,7 +298,6 @@
         saveUsers();
         setCurrentUser(newUser);
 
-        // Hide register link immediately
         const registerP = document.querySelector('#show-register').parentElement;
         if (registerP) registerP.style.display = 'none';
 
@@ -286,19 +306,21 @@
     };
 
     const handleLogout = () => {
+        if (currentUser && currentUser.isAdmin) {
+             localStorage.setItem('vsport_app_status', 'closed');
+        }
         clearCurrentUser();
-        // Reset lobby view to default state
         enterAppBtn.classList.remove('hidden');
         lobbySubtitle.classList.remove('hidden');
-        queueStatus.classList.add('hidden');
         navigate('auth');
     };
 
     const setupAndNavigateToApp = () => {
         appWelcomeUser.textContent = `Bejelentkezve: ${currentUser.username}`;
         
-        // Show/hide admin-only sections
         if (currentUser && currentUser.isAdmin) {
+            adminControls.classList.remove('hidden');
+            updateSessionButton();
             openStatsBtn.style.display = 'flex';
             logSection.style.display = 'flex';
             databaseSection.style.display = 'block';
@@ -308,6 +330,7 @@
                 addLogTab();
             }
         } else {
+            adminControls.classList.add('hidden');
             openStatsBtn.style.display = 'none';
             logSection.style.display = 'none';
             databaseSection.style.display = 'none';
@@ -320,6 +343,36 @@
         }
         
         navigate('app');
+    };
+    
+    // --- LOBBY & SESSION LOGIC ---
+    const checkAppStatus = () => {
+        const status = localStorage.getItem('vsport_app_status') || 'closed';
+        if (status === 'open') {
+            enterAppBtn.disabled = false;
+            lobbySubtitle.textContent = 'A belépés engedélyezve! Kattints az indításhoz.';
+            enterAppBtn.classList.add('animate-pulse');
+            clearInterval(lobbyPollInterval);
+        } else {
+             enterAppBtn.disabled = true;
+             enterAppBtn.classList.remove('animate-pulse');
+             lobbySubtitle.textContent = 'Várakozás az admin indítására...';
+        }
+    };
+    
+     const updateSessionButton = () => {
+        const status = localStorage.getItem('vsport_app_status') || 'closed';
+        if (status === 'open') {
+            sessionControlButton.textContent = 'Elemzés Leállítása';
+            sessionControlButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+            sessionControlButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            sessionStatusText.textContent = 'A rendszer NYITVA a felhasználóknak.';
+        } else {
+            sessionControlButton.textContent = 'Elemzés Indítása';
+            sessionControlButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+            sessionControlButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            sessionStatusText.textContent = 'A rendszer jelenleg ZÁRVA.';
+        }
     };
     
     // --- MAIN APP LOGIC (from previous version, slightly adapted) ---
@@ -370,7 +423,6 @@
     };
 
     const runAIAnalysis = (activePanel) => {
-        // ... (This function is identical to the previous version, so it's omitted here for brevity, but it is included in the final code)
         if (!activePanel) return;
 
         const homeTeamInput = activePanel.querySelector('.ai-home-team');
@@ -565,7 +617,6 @@
     };
 
     // --- UI HELPER FUNCTIONS ---
-    // ... (These functions are identical to the previous version, so they are omitted for brevity but included in the final code)
     const addAITab = () => {
         const tabId = Date.now().toString();
         const tabCount = aiTabsContainer.children.length + 1;
@@ -753,7 +804,6 @@
             welcomeMessage.textContent = `Üdvözlünk újra, ${currentUser.username}!`;
             navigate('lobby');
         } else {
-             // Hide registration if a user already exists, but only show this logic on auth page
             if (users.length > 0) {
                 const registerP = document.querySelector('#show-register').parentElement;
                 if(registerP) registerP.style.display = 'none';
@@ -776,26 +826,32 @@
             if (currentUser && currentUser.isAdmin) {
                 setupAndNavigateToApp();
             } else {
-                // Start queue for regular users
+                let ticketNumber = parseInt(localStorage.getItem('vsport_queue_next_ticket') || '31', 10);
+                
+                lobbySubtitle.textContent = `A te sorszámod: ${ticketNumber}. Beléptetés...`;
                 enterAppBtn.classList.add('hidden');
-                lobbySubtitle.classList.add('hidden');
-                queueStatus.classList.remove('hidden');
-
-                let queuePosition = 30;
-                queuePositionSpan.textContent = queuePosition;
-
-                const queueInterval = setInterval(() => {
-                    queuePosition--;
-                    queuePositionSpan.textContent = queuePosition;
-
-                    if (queuePosition <= 0) {
-                        clearInterval(queueInterval);
-                        setupAndNavigateToApp();
-                    }
-                }, 1000);
+                
+                localStorage.setItem('vsport_queue_next_ticket', (ticketNumber + 1).toString());
+                
+                setTimeout(() => {
+                    setupAndNavigateToApp();
+                    enterAppBtn.classList.remove('hidden');
+                }, 2500);
             }
         });
         
+        // Session Control Button (Admin)
+        sessionControlButton.addEventListener('click', () => {
+            const status = localStorage.getItem('vsport_app_status') || 'closed';
+            if (status === 'open') {
+                localStorage.setItem('vsport_app_status', 'closed');
+            } else {
+                localStorage.setItem('vsport_app_status', 'open');
+                localStorage.setItem('vsport_queue_next_ticket', '31');
+            }
+            updateSessionButton();
+        });
+
         // AI Panel listeners
         aiPanelsContainer.addEventListener('input', e => {
             if (e.target.classList.contains('ai-input')) {

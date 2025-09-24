@@ -214,11 +214,12 @@
     const callGeminiAPI = async (userQuery, retries = 3, delay = 1000) => {
         const apiKey = "AIzaSyAHUpldUnvwNZLth41103FhjODtCze3KGI";
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const systemPrompt = `Te egy profi sportfogadási elemző vagy, aki kizárólag az oddsok mintázataira specializálódott. A feladatod, hogy a megadott aktuális meccs oddsaihoz megkeresd a leginkább hasonlókat a kapott adatbázisból, és az ott látott eredmények alapján adj egy tippet. A válaszod KIZÁRÓLAG egy JSON objektum legyen. A JSON kulcsok: "predictedScore" (a tippelt eredmény, pl. "1-0"), "analysis" (egy részletes, 2-3 mondatos magyar nyelvű elemzés, amely leírja, miért hasonlítanak az oddsok és mi lett a kimenetelük), "prediction" (a kimenetel, ami lehet "homeWin", "awayWin", vagy "draw"), és "keyFactor" (a tipped legfontosabb indoka, pl. "Hasonló oddsoknál gyakori a hazai győzelem.").`;
+        const systemPrompt = `Te egy profi sportelemző vagy. A feladatod, hogy a kapott adatok és a Google Keresőből szerzett legfrissebb információk (sérülések, forma, hírek) alapján adj egy tippet egy focimeccsre. A válaszod KIZÁRÓLAG egy JSON objektum legyen, más szöveg nélkül. A JSON kulcsok: "predictedScore" (a tippelt eredmény, pl. "2-1"), "analysis" (egy részletes, 2-3 mondatos magyar nyelvű elemzés), "prediction" (a kimenetel, ami lehet "homeWin", "awayWin", vagy "draw"), és "keyFactor" (a tipped legfontosabb indoka, egyetlen kulcsmondat magyarul).`;
 
         const payload = {
             contents: [{ parts: [{ text: userQuery }] }],
             systemInstruction: { parts: [{ text: systemPrompt }] },
+            tools: [{ "google_search": {} }],
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -254,7 +255,12 @@
                 
                 if (candidate && candidate.content?.parts?.[0]?.text) return JSON.parse(candidate.content.parts[0].text);
                 
-                throw new Error("Érvénytelen API válasz struktúra.");
+                // Handle cases where the model might return an empty response even with a 200 OK
+                if (candidate && candidate.finishReason && candidate.finishReason !== "STOP") {
+                     throw new Error(`A modell leállt, ok: ${candidate.finishReason}`);
+                }
+
+                throw new Error("Érvénytelen vagy üres API válasz.");
 
             } catch (error) {
                 clearTimeout(timeoutId);
@@ -270,9 +276,8 @@
         }
     };
 
-    const model_Gemini_Analyst = async (homeTeam, awayTeam, home, draw, away, historicalLogs) => {
-        // Helyi futtatás ellenőrzése
-        if (window.location.protocol === 'file:') {
+    const model_Gemini_Analyst = async (homeTeam, awayTeam, home, draw, away) => {
+         if (window.location.protocol === 'file:') {
             return {
                 prediction: 'uncertain',
                 predictedScore: 'N/A',
@@ -282,15 +287,7 @@
             };
         }
 
-        const prompt = `
-Elemezd a '${homeTeam} - ${awayTeam}' meccset kizárólag az oddsok alapján.
-
-**Aktuális oddsok:** Hazai: ${home}, Döntetlen: ${draw}, Vendég: ${away}
-
-**Teljes historikus adatbázis (meccs: H-D-V odds, eredmény):**
-${historicalLogs.map(l => `${l.name}: ${l.home.toFixed(2)}-${l.draw.toFixed(2)}-${l.away.toFixed(2)}, Eredmény: ${l.homeScore}-${l.awayScore}`).join('; \n')}
-
-Keresd meg azokat a meccseket az adatbázisból, amelyeknek az oddsai a leginkább hasonlítanak az aktuális meccs oddsaihoz. Azok eredményei alapján add meg a tipped JSON formátumban.`;
+        const prompt = `Elemezd a '${homeTeam} - ${awayTeam}' focimeccset a Google Kereső és a megadott oddsok segítségével. Oddsok: Hazai: ${home}, Döntetlen: ${draw}, Vendég: ${away}. Adj egy tippet, és indokold meg a legfrissebb hírek, sérülések és formák alapján.`;
         
         const result = await callGeminiAPI(prompt);
 
@@ -378,12 +375,12 @@ Keresd meg azokat a meccseket az adatbázisból, amelyeknek az oddsai a leginká
         
         aiResultDiv.innerHTML = `<div class="p-4 space-y-3">
             <div class="p-3 bg-gray-700 rounded-lg text-left"><h4 class="font-bold text-teal-400">Statisztikai Elemző</h4><div class="flex items-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Számítás...</span></div></div>
-            <div class="p-3 bg-gray-700 rounded-lg text-left"><h4 class="font-bold text-teal-400">Gemini Elemző</h4><div class="flex items-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Gondolkodik...</span></div></div>
+            <div class="p-3 bg-gray-700 rounded-lg text-left"><h4 class="font-bold text-teal-400">Gemini Elemző</h4><div class="flex items-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Keresés a weben...</span></div></div>
         </div>`;
 
         const [statisticalResult, geminiResult] = await Promise.all([
             model_Statistical_Analyst(homeTeam, awayTeam),
-            model_Gemini_Analyst(homeTeam, awayTeam, home, draw, away, logs)
+            model_Gemini_Analyst(homeTeam, awayTeam, home, draw, away)
         ]);
         
         const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };

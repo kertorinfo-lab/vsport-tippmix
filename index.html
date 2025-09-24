@@ -255,7 +255,6 @@
                 
                 if (candidate && candidate.content?.parts?.[0]?.text) return JSON.parse(candidate.content.parts[0].text);
                 
-                // Handle cases where the model might return an empty response even with a 200 OK
                 if (candidate && candidate.finishReason && candidate.finishReason !== "STOP") {
                      throw new Error(`A modell leállt, ok: ${candidate.finishReason}`);
                 }

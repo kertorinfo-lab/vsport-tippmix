@@ -205,23 +205,40 @@
             let goalsScoredHome = 0, goalsConcededHome = 0, homeGames = 0;
             let goalsScoredAway = 0, goalsConcededAway = 0, awayGames = 0;
             logs.forEach(l => {
-                const teams = l.name.split(' - ').map(t => t.trim());
+                const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
                 if (teams.length < 2) return;
-                if (teams[0].toLowerCase() === teamName.toLowerCase()) {
-                    homeGames++; goalsScoredHome += l.homeScore; goalsConcededHome += l.awayScore;
-                } else if (teams[1].toLowerCase() === teamName.toLowerCase()) {
-                    awayGames++; goalsScoredAway += l.awayScore; goalsConcededAway += l.homeScore;
+                if (teams[0] === teamName.toLowerCase()) {
+                    homeGames++;
+                    goalsScoredHome += l.homeScore;
+                    goalsConcededHome += l.awayScore;
+                } else if (teams[1] === teamName.toLowerCase()) {
+                    awayGames++;
+                    goalsScoredAway += l.awayScore;
+                    goalsConcededAway += l.homeScore;
                 }
             });
-            const attackStrength = homeGames > 0 ? (goalsScoredHome / homeGames) / avgHomeGoals : 1;
-            const defenseStrength = awayGames > 0 ? (goalsConcededAway / awayGames) / avgHomeGoals : 1; // Note: Conceded away uses avgHomeGoals on purpose
-            return { attack: attackStrength, defense: defenseStrength };
+
+            const homeAttackStrength = homeGames > 0 ? (goalsScoredHome / homeGames) / avgHomeGoals : 1;
+            const homeDefenseStrength = homeGames > 0 ? (goalsConcededHome / homeGames) / avgAwayGoals : 1;
+            const awayAttackStrength = awayGames > 0 ? (goalsScoredAway / awayGames) / avgAwayGoals : 1;
+            const awayDefenseStrength = awayGames > 0 ? (goalsConcededAway / awayGames) / avgHomeGoals : 1;
+
+            return {
+                homeAttack: homeAttackStrength,
+                homeDefense: homeDefenseStrength,
+                awayAttack: awayAttackStrength,
+                awayDefense: awayDefenseStrength
+            };
         };
         
         const homeStrength = getTeamStrength(homeTeam);
         const awayStrength = getTeamStrength(awayTeam);
-        let homeXG = homeStrength.attack * awayStrength.defense * avgHomeGoals;
-        let awayXG = awayStrength.attack * homeStrength.defense * avgAwayGoals;
+        
+        // JAVÍTOTT xG számítás: A megfelelő támadó és védekező erősségeket használja.
+        // Hazai Gólok = Hazai(Támadás) * Vendég(Védekezés) * LigaÁtlag(HazaiGól)
+        let homeXG = homeStrength.homeAttack * awayStrength.awayDefense * avgHomeGoals;
+        // Vendég Gólok = Vendég(Támadás) * Hazai(Védekezés) * LigaÁtlag(VendégGól)
+        let awayXG = awayStrength.awayAttack * homeStrength.homeDefense * avgAwayGoals;
         
         // Adjust xG based on form (30% weight on recent form)
         if (homeForm.games > 0) {
@@ -613,4 +630,5 @@
 
 </body>
 </html>
+
 

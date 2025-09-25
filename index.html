@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VSPORT Football</title>
-    <script src="https://cdn/tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -278,8 +278,8 @@
         return { 
             prediction: winnerOutcome, 
             predictedScore, 
-            predictedOverUnder15: predictedTotalGoals > 1.5 ? 'over' : 'under',
-            predictedOverUnder25: predictedTotalGoals > 2.5 ? 'over' : 'under',
+            predictedOverUnder15: predictedTotalGoals >= 1.5 ? 'over' : 'under',
+            predictedOverUnder25: predictedTotalGoals >= 2.5 ? 'over' : 'under',
             reason: reasons.join('\n'), 
             pattern: 'Poisson Statisztika', 
             homeXG, 
@@ -324,8 +324,8 @@
         return {
             prediction,
             predictedScore,
-            predictedOverUnder15: totalGoals > 1.5 ? 'over' : 'under',
-            predictedOverUnder25: totalGoals > 2.5 ? 'over' : 'under',
+            predictedOverUnder15: totalGoals >= 1.5 ? 'over' : 'under',
+            predictedOverUnder25: totalGoals >= 2.5 ? 'over' : 'under',
             reason: `A legalacsonyabb odds (${minOdd}) alapján a tippelt kimenetel.`,
             pattern: 'Odds Alapú'
         };
@@ -361,8 +361,8 @@
         return {
             prediction,
             predictedScore,
-            predictedOverUnder15: predictedTotalGoals > 1.5 ? 'over' : 'under',
-            predictedOverUnder25: predictedTotalGoals > 2.5 ? 'over' : 'under',
+            predictedOverUnder15: predictedTotalGoals >= 1.5 ? 'over' : 'under',
+            predictedOverUnder25: predictedTotalGoals >= 2.5 ? 'over' : 'under',
             reason: `A statisztikai (xG) és odds alapú valószínűségek ötvözete. Hibrid pontszám: ${hybridScore.toFixed(2)}.`,
             pattern: 'Hibrid Elemző'
         };
@@ -658,8 +658,8 @@
                     outcomeCorrect: btn.dataset[`${prefix}Prediction`] === actualOutcome,
                     predictedOverUnder15: predOU15,
                     predictedOverUnder25: predOU25,
-                    overUnder15Correct: (predOU15 === 'over' && actualTotalGoals > 1.5) || (predOU15 === 'under' && actualTotalGoals < 1.5),
-                    overUnder25Correct: (predOU25 === 'over' && actualTotalGoals > 2.5) || (predOU25 === 'under' && actualTotalGoals < 2.5),
+                    overUnder15Correct: (predOU15 === 'over' && actualTotalGoals >= 1.5) || (predOU15 === 'under' && actualTotalGoals < 1.5),
+                    overUnder25Correct: (predOU25 === 'over' && actualTotalGoals >= 2.5) || (predOU25 === 'under' && actualTotalGoals < 2.5),
                 });
             });
             

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VSPORT Football</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn/tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -263,6 +263,7 @@
         
         const [homeScore, awayScore] = predictedScore.split('-').map(Number);
         const totalXG = homeXG + awayXG;
+        const predictedTotalGoals = homeScore + awayScore;
         let winnerOutcome = (homeScore > awayScore) ? 'homeWin' : (awayScore > homeScore) ? 'awayWin' : 'draw';
 
         const reasons = [
@@ -277,8 +278,8 @@
         return { 
             prediction: winnerOutcome, 
             predictedScore, 
-            predictedOverUnder15: totalXG > 1.5 ? 'over' : 'under',
-            predictedOverUnder25: totalXG > 2.5 ? 'over' : 'under',
+            predictedOverUnder15: predictedTotalGoals > 1.5 ? 'over' : 'under',
+            predictedOverUnder25: predictedTotalGoals > 2.5 ? 'over' : 'under',
             reason: reasons.join('\n'), 
             pattern: 'Poisson Statisztika', 
             homeXG, 
@@ -354,13 +355,14 @@
         if (prediction === 'homeWin') predictedScore = hybridScore > 0.8 ? "2-0" : "2-1";
         else if (prediction === 'awayWin') predictedScore = hybridScore < -0.8 ? "0-2" : "1-2";
         
-        const totalXG = homeXG + awayXG;
+        const [h, a] = predictedScore.split('-').map(Number);
+        const predictedTotalGoals = h + a;
 
         return {
             prediction,
             predictedScore,
-            predictedOverUnder15: totalXG > 1.5 ? 'over' : 'under',
-            predictedOverUnder25: totalXG > 2.5 ? 'over' : 'under',
+            predictedOverUnder15: predictedTotalGoals > 1.5 ? 'over' : 'under',
+            predictedOverUnder25: predictedTotalGoals > 2.5 ? 'over' : 'under',
             reason: `A statisztikai (xG) és odds alapú valószínűségek ötvözete. Hibrid pontszám: ${hybridScore.toFixed(2)}.`,
             pattern: 'Hibrid Elemző'
         };

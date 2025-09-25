@@ -29,7 +29,7 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        .outcome-homeWin { background-color: #e8f5e9; border-left: 4px solid #4caf50; }
+        .outcome-homeWin { background-color: #e8f5f9; border-left: 4px solid #4caf50; }
         .outcome-awayWin { background-color: #ffebee; border-left: 4px solid #f44336; }
         .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
 
@@ -276,13 +276,36 @@
 
     const model_Odds_Based = (home, draw, away) => {
         let prediction = 'uncertain';
+        let predictedScore = '?-?';
         const minOdd = Math.min(home, draw, away);
-        if (minOdd === home) prediction = 'homeWin';
-        else if (minOdd === away) prediction = 'awayWin';
-        else prediction = 'draw';
+
+        if (isNaN(minOdd)) {
+            return {
+                prediction: 'uncertain',
+                predictedScore: '?-?',
+                reason: 'Érvénytelen oddsok megadva.',
+                pattern: 'Odds Alapú'
+            };
+        }
+
+        if (minOdd === home) {
+            prediction = 'homeWin';
+            if (home < 1.5) predictedScore = '2-0';
+            else if (home < 2.2) predictedScore = '2-1';
+            else predictedScore = '1-0';
+        } else if (minOdd === away) {
+            prediction = 'awayWin';
+            if (away < 1.5) predictedScore = '0-2';
+            else if (away < 2.2) predictedScore = '1-2';
+            else predictedScore = '0-1';
+        } else { // minOdd === draw
+            prediction = 'draw';
+            predictedScore = '1-1';
+        }
+        
         return {
             prediction,
-            predictedScore: '?-?',
+            predictedScore,
             reason: `A legalacsonyabb odds (${minOdd}) alapján a tippelt kimenetel.`,
             pattern: 'Odds Alapú'
         };
@@ -369,7 +392,14 @@
         setTimeout(() => {
             const statisticalResult = model_Statistical_Analyst(homeTeam, awayTeam);
             const oddsResult = model_Odds_Based(home, draw, away);
-            const mlResult = model_ML_Experimental(statisticalResult.homeXG, statisticalResult.awayXG, home, away);
+            const mlResult = (statisticalResult.homeXG !== undefined && statisticalResult.awayXG !== undefined)
+                ? model_ML_Experimental(statisticalResult.homeXG, statisticalResult.awayXG, home, away)
+                : { 
+                    prediction: 'uncertain', 
+                    predictedScore: '?-?', 
+                    reason: 'Nem futtatható, mert a statisztikai modellhez nincs elég adat.', 
+                    pattern: 'ML Adathiány' 
+                  };
             
             const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };
 

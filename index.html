@@ -107,7 +107,7 @@
     <div id="stats-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
             <div class="p-4 border-b flex justify-between items-center">
-                <h2 class="text-xl font-bold text-slate-800">Modellek Teljesítménye</h2>
+                <h2 class="text-xl font-bold text-slate-800">Modell Teljesítménye</h2>
                 <button id="close-stats-btn" class="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -150,10 +150,10 @@
     };
 
     const model_Statistical_Analyst = (homeTeam, awayTeam) => {
-        if (logs.length === 0) return { 
+        if (logs.length < 5) return { 
             prediction: 'uncertain', 
             predictedScore: '?-?', 
-            reason: 'Nincs adat a statisztikai elemzéshez.', 
+            reason: 'Nincs elég adat (minimum 5 meccs szükséges) a statisztikai elemzéshez.', 
             pattern: 'Nincs Adat' 
         };
 
@@ -161,6 +161,45 @@
         logs.forEach(l => { totalHomeGoals += l.homeScore; totalAwayGoals += l.awayScore; });
         const avgHomeGoals = totalHomeGoals / matchCount;
         const avgAwayGoals = totalAwayGoals / matchCount;
+        
+        // Head-to-Head analysis
+        const h2hLogs = logs.filter(l => {
+            const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
+            return (teams[0] === homeTeam.toLowerCase() && teams[1] === awayTeam.toLowerCase()) ||
+                   (teams[0] === awayTeam.toLowerCase() && teams[1] === homeTeam.toLowerCase());
+        });
+        let h2hHomeWins = 0, h2hAwayWins = 0, h2hDraws = 0;
+        h2hLogs.forEach(l => {
+            const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
+            if (teams[0] === homeTeam.toLowerCase()) { // Home team was home in h2h
+                if (l.outcome === 'homeWin') h2hHomeWins++; else if (l.outcome === 'awayWin') h2hAwayWins++; else h2hDraws++;
+            } else { // Home team was away in h2h
+                if (l.outcome === 'awayWin') h2hHomeWins++; else if (l.outcome === 'homeWin') h2hAwayWins++; else h2hDraws++;
+            }
+        });
+
+        // Recent Form analysis (last 5 games)
+        const getTeamForm = (teamName) => {
+            const teamLogs = logs.filter(l => l.name.toLowerCase().includes(teamName.toLowerCase()))
+                                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                                 .slice(0, 5);
+            if (teamLogs.length === 0) return { text: "Nincs friss meccs.", goalsScored: 0, games: 0, wins: 0, draws: 0, losses: 0 };
+            
+            let wins = 0, draws = 0, losses = 0, goalsScored = 0, goalsConceded = 0;
+            teamLogs.forEach(l => {
+                const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
+                const isHome = teams[0] === teamName.toLowerCase();
+                if ((isHome && l.outcome === 'homeWin') || (!isHome && l.outcome === 'awayWin')) wins++;
+                else if (l.outcome === 'draw') draws++;
+                else losses++;
+                goalsScored += isHome ? l.homeScore : l.awayScore;
+                goalsConceded += isHome ? l.awayScore : l.homeScore;
+            });
+            return { text: `${wins}GY-${draws}D-${losses}V (${goalsScored}:${goalsConceded})`, goalsScored, games: teamLogs.length };
+        };
+
+        const homeForm = getTeamForm(homeTeam);
+        const awayForm = getTeamForm(awayTeam);
 
         const getTeamStrength = (teamName) => {
             let goalsScoredHome = 0, goalsConcededHome = 0, homeGames = 0;
@@ -175,20 +214,30 @@
                 }
             });
             const attackStrength = homeGames > 0 ? (goalsScoredHome / homeGames) / avgHomeGoals : 1;
-            const defenseStrength = awayGames > 0 ? (goalsConcededAway / awayGames) / avgHomeGoals : 1;
+            const defenseStrength = awayGames > 0 ? (goalsConcededAway / awayGames) / avgHomeGoals : 1; // Note: Conceded away uses avgHomeGoals on purpose
             return { attack: attackStrength, defense: defenseStrength };
         };
-
+        
         const homeStrength = getTeamStrength(homeTeam);
         const awayStrength = getTeamStrength(awayTeam);
-        const homeXG = homeStrength.attack * awayStrength.defense * avgHomeGoals;
-        const awayXG = awayStrength.attack * homeStrength.defense * avgAwayGoals;
+        let homeXG = homeStrength.attack * awayStrength.defense * avgHomeGoals;
+        let awayXG = awayStrength.attack * homeStrength.defense * avgAwayGoals;
+        
+        // Adjust xG based on form (30% weight on recent form)
+        if (homeForm.games > 0) {
+            const homeFormAttackRatio = (homeForm.goalsScored / homeForm.games) / avgHomeGoals;
+            homeXG = homeXG * 0.7 + (homeXG * homeFormAttackRatio) * 0.3;
+        }
+        if (awayForm.games > 0) {
+            const awayFormAttackRatio = (awayForm.goalsScored / awayForm.games) / avgAwayGoals;
+            awayXG = awayXG * 0.7 + (awayXG * awayFormAttackRatio) * 0.3;
+        }
         
         let maxProb = 0;
         let predictedScore = "1-1";
         let outcomeProbs = { homeWin: 0, draw: 0, awayWin: 0 };
-        for (let i = 0; i < 6; i++) {
-            for (let j = 0; j < 6; j++) {
+        for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < 7; j++) {
                 const prob = poissonProbability(i, homeXG) * poissonProbability(j, awayXG);
                 if (i > j) outcomeProbs.homeWin += prob;
                 else if (j > i) outcomeProbs.awayWin += prob;
@@ -199,114 +248,22 @@
         const winnerOutcome = Object.keys(outcomeProbs).reduce((a, b) => outcomeProbs[a] > outcomeProbs[b] ? a : b);
 
         const reasons = [
-            `Hazai xG: ${homeXG.toFixed(2)}, Vendég xG: ${awayXG.toFixed(2)}`,
-            `Kimenetel esélyek: H: ${(outcomeProbs.homeWin*100).toFixed(1)}%, D: ${(outcomeProbs.draw*100).toFixed(1)}%, V: ${(outcomeProbs.awayWin*100).toFixed(1)}%`
+            `Becsült gólok (xG): H: ${homeXG.toFixed(2)}, V: ${awayXG.toFixed(2)}`,
+            `Forma (5): ${homeTeam.split(' ').pop()}: ${homeForm.text} | ${awayTeam.split(' ').pop()}: ${awayForm.text}`,
         ];
+        if (h2hLogs.length > 0) {
+            reasons.push(`Egymás ellen (${h2hLogs.length}): ${h2hHomeWins}H - ${h2hDraws}D - ${h2hAwayWins}V`);
+        }
+        reasons.push(`Esélyek: H: ${(outcomeProbs.homeWin*100).toFixed(1)}%, D: ${(outcomeProbs.draw*100).toFixed(1)}%, V: ${(outcomeProbs.awayWin*100).toFixed(1)}%`);
 
         return {
             prediction: winnerOutcome,
             predictedScore: predictedScore,
             reason: reasons.join('\n'),
-            pattern: 'Poisson Eloszlás'
+            pattern: 'Fejlett Statisztika'
         };
     };
     
-    const callGeminiAPI = async (userQuery, retries = 3, delay = 1000) => {
-        // JAVÍTÁS: A fix API kulcs eltávolítva. A futtató környezet fogja biztosítani a kulcsot.
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-        const systemPrompt = `Te egy profi sportelemző vagy. A feladatod, hogy a kapott adatok és a Google Keresőből szerzett legfrissebb információk (sérülések, forma, hírek) alapján adj egy tippet egy focimeccsre. A válaszod KIZÁRÓLAG egy JSON objektum legyen, más szöveg nélkül. A JSON kulcsok: "predictedScore" (a tippelt eredmény, pl. "2-1"), "analysis" (egy részletes, 2-3 mondatos magyar nyelvű elemzés), "prediction" (a kimenetel, ami lehet "homeWin", "awayWin", vagy "draw"), és "keyFactor" (a tipped legfontosabb indoka, egyetlen kulcsmondat magyarul).`;
-
-        const payload = {
-            contents: [{ parts: [{ text: userQuery }] }],
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            tools: [{ "google_search": {} }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "OBJECT",
-                    properties: {
-                        "predictedScore": { "type": "STRING" },
-                        "analysis": { "type": "STRING" },
-                        "prediction": { "type": "STRING" },
-                        "keyFactor": { "type": "STRING" }
-                    },
-                    required: ["predictedScore", "analysis", "prediction", "keyFactor"]
-                }
-            }
-        };
-
-        for (let i = 0; i < retries; i++) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-            try {
-                const response = await fetch(apiUrl, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (!response.ok) throw new Error(`API hiba: ${response.status}`);
-                
-                const result = await response.json();
-                const candidate = result.candidates?.[0];
-                
-                if (candidate && candidate.content?.parts?.[0]?.text) return JSON.parse(candidate.content.parts[0].text);
-                
-                if (candidate && candidate.finishReason && candidate.finishReason !== "STOP") {
-                     throw new Error(`A modell leállt, ok: ${candidate.finishReason}`);
-                }
-
-                throw new Error("Érvénytelen vagy üres API válasz.");
-
-            } catch (error) {
-                clearTimeout(timeoutId);
-                const errorMessage = error.name === 'AbortError' ? 'Időtúllépés (a szerver nem válaszolt időben).' : error.message;
-                console.warn(`Gemini API hívás sikertelen (próbálkozás: ${i + 1}), hiba:`, errorMessage);
-                
-                if (i === retries - 1) {
-                    return { error: `Gemini API hiba: ${errorMessage}` };
-                }
-                
-                await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
-            }
-        }
-    };
-
-    const model_Gemini_Analyst = async (homeTeam, awayTeam, home, draw, away) => {
-         if (window.location.protocol === 'file:') {
-            return {
-                prediction: 'uncertain',
-                predictedScore: 'N/A',
-                reason: 'A Gemini AI nem érhető el helyi fájlként futtatva. A funkcióhoz helyi webszerver (pl. VS Code Live Server) szükséges.',
-                pattern: 'Helyi Fájl Korlát',
-                keyFactor: 'Böngésző biztonsági korlátozás'
-            };
-        }
-
-        const prompt = `Elemezd a '${homeTeam} - ${awayTeam}' focimeccset a Google Kereső és a megadott oddsok segítségével. Oddsok: Hazai: ${home}, Döntetlen: ${draw}, Vendég: ${away}. Adj egy tippet, és indokold meg a legfrissebb hírek, sérülések és formák alapján.`;
-        
-        const result = await callGeminiAPI(prompt);
-
-        if (result.error) {
-            return { prediction: 'uncertain', predictedScore: '?-?', reason: `A Gemini AI nem tudott válaszolni. Hiba: ${result.error}`, pattern: 'API Hiba', keyFactor: 'Hiba' };
-        }
-        
-        const validPredictions = ['homeWin', 'draw', 'awayWin'];
-        const prediction = validPredictions.includes(result.prediction) ? result.prediction : 'uncertain';
-
-        return { 
-            prediction, 
-            predictedScore: result.predictedScore, 
-            reason: result.analysis, 
-            keyFactor: result.keyFactor,
-            pattern: 'Gemini Elemzés' 
-        };
-    };
-
     // --- MAIN APP LOGIC ---
     const formatTimestamp = (isoString) => new Date(isoString).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -375,22 +332,17 @@
         
         aiResultDiv.innerHTML = `<div class="p-4 space-y-3">
             <div class="p-3 bg-gray-700 rounded-lg text-left"><h4 class="font-bold text-teal-400">Statisztikai Elemző</h4><div class="flex items-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Számítás...</span></div></div>
-            <div class="p-3 bg-gray-700 rounded-lg text-left"><h4 class="font-bold text-teal-400">Gemini Elemző</h4><div class="flex items-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Keresés a weben...</span></div></div>
         </div>`;
 
-        const [statisticalResult, geminiResult] = await Promise.all([
-            model_Statistical_Analyst(homeTeam, awayTeam),
-            model_Gemini_Analyst(homeTeam, awayTeam, home, draw, away)
-        ]);
+        const statisticalResult = await model_Statistical_Analyst(homeTeam, awayTeam);
         
         const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };
 
-        const createCardHTML = (title, result, isGemini = false) => `
+        const createCardHTML = (title, result) => `
             <div class="p-3 bg-gray-700 rounded-lg text-left">
                 <h4 class="font-bold text-teal-400">${title}</h4>
                 <p class="text-2xl font-bold text-white mt-1">${result.predictedScore}</p>
                 <p class="text-sm text-teal-300">${outcomeMap[result.prediction] || 'Ismeretlen'}</p>
-                ${isGemini ? `<p class="text-xs text-yellow-300 mt-2"><b>Kulcsfaktor:</b> ${result.keyFactor || ''}</p>` : ''}
                 <p class="text-xs text-gray-300 whitespace-pre-wrap mt-2">${result.reason}</p>
             </div>`;
         
@@ -407,8 +359,7 @@
             </div>`;
 
         aiResultDiv.innerHTML = `<div class="space-y-3">
-            ${createCardHTML('Statisztikai Elemző', statisticalResult)}
-            ${createCardHTML('Gemini Elemző', geminiResult, true)}
+            ${createCardHTML('Fejlett Statisztikai Elemző', statisticalResult)}
             ${saveResultHTML}
         </div>`;
 
@@ -416,9 +367,6 @@
         saveBtn.dataset.statPrediction = statisticalResult.prediction;
         saveBtn.dataset.statPredictedScore = statisticalResult.predictedScore;
         saveBtn.dataset.statPattern = statisticalResult.pattern;
-        saveBtn.dataset.geminiPrediction = geminiResult.prediction;
-        saveBtn.dataset.geminiPredictedScore = geminiResult.predictedScore;
-        saveBtn.dataset.geminiPattern = geminiResult.pattern;
         saveBtn.dataset.homeTeam = homeTeam;
         saveBtn.dataset.awayTeam = awayTeam;
         saveBtn.dataset.homeOdds = home;
@@ -447,7 +395,7 @@
                 <input type="text" inputmode="decimal" placeholder="Döntetlen (X)" class="ai-input ai-draw w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-teal-400 text-white">
                 <input type="text" inputmode="decimal" placeholder="Vendég (2)" class="ai-input ai-away w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-teal-400 text-white">
             </div>
-            <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-center min-h-[450px]"></div>`;
+            <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-center min-h-[300px]"></div>`;
         aiTabsContainer.appendChild(tab);
         aiPanelsContainer.appendChild(panel);
         switchAITab(tabId);
@@ -482,7 +430,7 @@
     };
     
     const renderStatistics = () => {
-        const modelsToTrack = ['Statisztikai Elemző', 'Gemini Elemző'];
+        const modelsToTrack = ['Fejlett Statisztika'];
         const stats = {};
         modelsToTrack.forEach(name => {
             stats[name] = { total: 0, outcomeCorrect: 0, exactScoreCorrect: 0, teams: {} };
@@ -562,22 +510,19 @@
             logs.unshift(newLog);
             renderLogs();
 
-            const models = ['stat', 'gemini'];
-            models.forEach(modelPrefix => {
-                const predictedScores = btn.dataset[`${modelPrefix}PredictedScore`].split('-').map(Number);
-                const newPrediction = {
-                    id: Date.now() + Math.random(),
-                    modelName: modelPrefix === 'stat' ? 'Statisztikai Elemző' : 'Gemini Elemző',
-                    teams: `${btn.dataset.homeTeam} - ${btn.dataset.awayTeam}`,
-                    pattern: btn.dataset[`${modelPrefix}Pattern`],
-                    predictedOutcome: btn.dataset[`${modelPrefix}Prediction`],
-                    predictedScore: btn.dataset[`${modelPrefix}PredictedScore`],
-                    actualScore: `${actualHomeScore}-${actualAwayScore}`,
-                    outcomeCorrect: btn.dataset[`${modelPrefix}Prediction`] === actualOutcome,
-                    exactScoreCorrect: predictedScores.length === 2 && predictedScores[0] === actualHomeScore && predictedScores[1] === actualAwayScore
-                };
-                predictionsLog.unshift(newPrediction);
-            });
+            const predictedScores = btn.dataset.statPredictedScore.split('-').map(Number);
+            const newPrediction = {
+                id: Date.now() + Math.random(),
+                modelName: 'Fejlett Statisztika',
+                teams: `${btn.dataset.homeTeam} - ${btn.dataset.awayTeam}`,
+                pattern: btn.dataset.statPattern,
+                predictedOutcome: btn.dataset.statPrediction,
+                predictedScore: btn.dataset.statPredictedScore,
+                actualScore: `${actualHomeScore}-${actualAwayScore}`,
+                outcomeCorrect: btn.dataset.statPrediction === actualOutcome,
+                exactScoreCorrect: predictedScores.length === 2 && predictedScores[0] === actualHomeScore && predictedScores[1] === actualAwayScore
+            };
+            predictionsLog.unshift(newPrediction);
             
             saveToLocalStorage();
 
@@ -658,3 +603,4 @@
 
 </body>
 </html>
+

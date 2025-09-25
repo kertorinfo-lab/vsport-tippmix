@@ -245,7 +245,17 @@
                 if (prob > maxProb) { maxProb = prob; predictedScore = `${i}-${j}`; }
             }
         }
-        const winnerOutcome = Object.keys(outcomeProbs).reduce((a, b) => outcomeProbs[a] > outcomeProbs[b] ? a : b);
+        
+        // JAVÍTÁS: A kimenetelt a legvalószínűbb eredményből vezetjük le, hogy elkerüljük az ellentmondást.
+        const [homeScore, awayScore] = predictedScore.split('-').map(Number);
+        let winnerOutcome;
+        if (homeScore > awayScore) {
+            winnerOutcome = 'homeWin';
+        } else if (awayScore > homeScore) {
+            winnerOutcome = 'awayWin';
+        } else {
+            winnerOutcome = 'draw';
+        }
 
         const reasons = [
             `Becsült gólok (xG): H: ${homeXG.toFixed(2)}, V: ${awayXG.toFixed(2)}`,

@@ -271,7 +271,7 @@
         }
         reasons.push(`Esélyek: H: ${(outcomeProbs.homeWin*100).toFixed(1)}%, D: ${(outcomeProbs.draw*100).toFixed(1)}%, V: ${(outcomeProbs.awayWin*100).toFixed(1)}%`);
 
-        return { prediction: winnerOutcome, predictedScore, reason: reasons.join('\n'), pattern: 'Fejlett Statisztika', homeXG, awayXG };
+        return { prediction: winnerOutcome, predictedScore, reason: reasons.join('\n'), pattern: 'Poisson Statisztika', homeXG, awayXG };
     };
 
     const model_Odds_Based = (home, draw, away) => {
@@ -311,24 +311,35 @@
         };
     };
     
-    const model_ML_Experimental = (homeXG, awayXG, homeOdds, awayOdds) => {
-        const weights = { xg_diff: 0.6, odds_diff: 0.4, home_adv: 0.1 };
-        const xgDifference = homeXG - awayXG;
-        const oddsDifference = awayOdds - homeOdds;
-        const normalizedXG = Math.max(-5, Math.min(5, xgDifference));
-        const normalizedOdds = Math.max(-5, Math.min(5, oddsDifference));
-        let score = (normalizedXG * weights.xg_diff) + (normalizedOdds * weights.odds_diff) + weights.home_adv;
+    const model_Hybrid_Analyst = (homeXG, awayXG, homeOdds, drawOdds, awayOdds) => {
+        // Implied probabilities from odds
+        const probH = 1 / homeOdds;
+        const probD = 1 / drawOdds;
+        const probA = 1 / awayOdds;
+        const totalProb = probH + probD + probA;
+        const normH = probH / totalProb;
+        const normA = probA / totalProb;
+        
+        const oddsScore = normH - normA; // Range ~[-1, 1]
+        const statScore = homeXG - awayXG;
+        const normalizedStatScore = Math.tanh(statScore / 2); // Squash stat score to ~[-1, 1]
+
+        // Weighted average of the two scores
+        const hybridScore = (normalizedStatScore * 0.6) + (oddsScore * 0.4);
+
         let prediction = 'draw';
-        if (score > 0.75) prediction = 'homeWin';
-        else if (score < -0.75) prediction = 'awayWin';
+        if (hybridScore > 0.3) prediction = 'homeWin';
+        else if (hybridScore < -0.3) prediction = 'awayWin';
+        
         let predictedScore = "1-1";
-        if (prediction === 'homeWin') predictedScore = score > 2.5 ? "3-1" : "2-1";
-        else if (prediction === 'awayWin') predictedScore = score < -2.5 ? "1-3" : "1-2";
+        if (prediction === 'homeWin') predictedScore = hybridScore > 0.8 ? "2-0" : "2-1";
+        else if (prediction === 'awayWin') predictedScore = hybridScore < -0.8 ? "0-2" : "1-2";
+
         return {
             prediction,
             predictedScore,
-            reason: `Szimulált ML modell elemzése. Súlyozott pontszám: ${score.toFixed(2)}.`,
-            pattern: 'ML Kísérlet'
+            reason: `A statisztikai (xG) és odds alapú valószínűségek ötvözete. Hibrid pontszám: ${hybridScore.toFixed(2)}.`,
+            pattern: 'Hibrid Elemző'
         };
     };
     
@@ -392,13 +403,13 @@
         setTimeout(() => {
             const statisticalResult = model_Statistical_Analyst(homeTeam, awayTeam);
             const oddsResult = model_Odds_Based(home, draw, away);
-            const mlResult = (statisticalResult.homeXG !== undefined && statisticalResult.awayXG !== undefined)
-                ? model_ML_Experimental(statisticalResult.homeXG, statisticalResult.awayXG, home, away)
+            const hybridResult = (statisticalResult.homeXG !== undefined && statisticalResult.awayXG !== undefined)
+                ? model_Hybrid_Analyst(statisticalResult.homeXG, statisticalResult.awayXG, home, draw, away)
                 : { 
                     prediction: 'uncertain', 
                     predictedScore: '?-?', 
                     reason: 'Nem futtatható, mert a statisztikai modellhez nincs elég adat.', 
-                    pattern: 'ML Adathiány' 
+                    pattern: 'Hibrid Adathiány' 
                   };
             
             const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };
@@ -424,9 +435,9 @@
                 </div>`;
 
             aiResultDiv.innerHTML = `<div class="space-y-3">
-                ${createCardHTML('Fejlett Statisztikai Elemző', statisticalResult)}
+                ${createCardHTML('Hibrid Elemző (Ajánlott)', hybridResult)}
                 ${createCardHTML('Odds Alapú Elemző', oddsResult)}
-                ${createCardHTML('ML Kísérlet (Szimuláció)', mlResult)}
+                ${createCardHTML('Poisson Statisztika', statisticalResult)}
                 ${saveResultHTML}
             </div>`;
 
@@ -435,7 +446,7 @@
                 homeTeam, awayTeam, homeOdds: home, drawOdds: draw, awayOdds: away,
                 statPrediction: statisticalResult.prediction, statPredictedScore: statisticalResult.predictedScore, statPattern: statisticalResult.pattern,
                 oddsPrediction: oddsResult.prediction, oddsPredictedScore: oddsResult.predictedScore, oddsPattern: oddsResult.pattern,
-                mlPrediction: mlResult.prediction, mlPredictedScore: mlResult.predictedScore, mlPattern: mlResult.pattern,
+                hybridPrediction: hybridResult.prediction, hybridPredictedScore: hybridResult.predictedScore, hybridPattern: hybridResult.pattern,
             });
         }, 250);
     };
@@ -496,7 +507,7 @@
     };
     
     const renderStatistics = () => {
-        const modelsToTrack = ['Fejlett Statisztika', 'Odds Alapú', 'ML Kísérlet'];
+        const modelsToTrack = ['Hibrid Elemző', 'Odds Alapú', 'Poisson Statisztika'];
         const stats = {};
         modelsToTrack.forEach(name => {
             stats[name] = { total: 0, outcomeCorrect: 0, exactScoreCorrect: 0, teams: {} };
@@ -566,9 +577,9 @@
             logs.unshift(newLog);
             renderLogs();
             
-            ['stat', 'odds', 'ml'].forEach(prefix => {
+            ['stat', 'odds', 'hybrid'].forEach(prefix => {
                 const predictedScores = btn.dataset[`${prefix}PredictedScore`].split('-').map(Number);
-                const modelNameMap = { stat: 'Fejlett Statisztika', odds: 'Odds Alapú', ml: 'ML Kísérlet' };
+                const modelNameMap = { stat: 'Poisson Statisztika', odds: 'Odds Alapú', hybrid: 'Hibrid Elemző' };
                 predictionsLog.unshift({
                     id: Date.now() + Math.random(),
                     modelName: modelNameMap[prefix],

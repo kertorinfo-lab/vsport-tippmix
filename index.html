@@ -120,7 +120,12 @@
     <div id="stats-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col">
             <div class="p-4 border-b flex justify-between items-center">
-                <h2 class="text-xl font-bold text-slate-800">Modellek Teljesítménye</h2>
+                 <div class="flex items-center gap-4">
+                     <h2 class="text-xl font-bold text-slate-800">Modellek Teljesítménye</h2>
+                     <button id="reset-stats-btn" class="bg-red-600 text-white font-semibold py-1 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-red-700 flex items-center space-x-2 text-xs">
+                         <span>Statisztika Törlése</span>
+                     </button>
+                </div>
                 <button id="close-stats-btn" class="text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -147,6 +152,7 @@
     const importDataBtn = document.getElementById('import-data-btn');
     const importFileInput = document.getElementById('import-file-input');
     const importStatus = document.getElementById('import-status');
+    const resetStatsBtn = document.getElementById('reset-stats-btn');
 
 
     // --- APP STATE ---
@@ -159,7 +165,7 @@
 
     const FACTORIALS = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];
     const poissonProbability = (k, lambda) => {
-        if (k >= FACTORIALS.length || lambda < 0) return 0;
+        if (k >= FACTORIALS.length || lambda < 0 || isNaN(lambda)) return 0;
         return (Math.pow(lambda, k) * Math.exp(-lambda)) / FACTORIALS[k];
     };
 
@@ -170,34 +176,47 @@
             predictedOverUnder15: 'uncertain',
             predictedOverUnder25: 'uncertain',
             reason: 'Nincs elég adat (minimum 5 meccs szükséges) a statisztikai elemzéshez.', 
-            pattern: 'Nincs Adat' 
+            pattern: 'Nincs Adat',
+            homeXG: undefined,
+            awayXG: undefined,
+            totalXG: undefined
         };
 
-        let totalHomeGoals = 0, totalAwayGoals = 0, matchCount = logs.length;
-        logs.forEach(l => { totalHomeGoals += l.homeScore; totalAwayGoals += l.awayScore; });
-        const avgHomeGoals = totalHomeGoals / matchCount;
-        const avgAwayGoals = totalAwayGoals / matchCount;
+        const sortedLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
-        const h2hLogs = logs.filter(l => {
+        let totalHomeGoals = 0, totalAwayGoals = 0, totalWeight = 0;
+        sortedLogs.forEach((l, index) => {
+            const weight = Math.pow(0.97, index); // Exponential decay for recency
+            totalHomeGoals += l.homeScore * weight;
+            totalAwayGoals += l.awayScore * weight;
+            totalWeight += weight;
+        });
+        const avgHomeGoals = totalHomeGoals / totalWeight;
+        const avgAwayGoals = totalAwayGoals / totalWeight;
+        
+        const h2hLogs = sortedLogs.filter(l => {
             const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
             return (teams[0] === homeTeam.toLowerCase() && teams[1] === awayTeam.toLowerCase()) ||
                    (teams[0] === awayTeam.toLowerCase() && teams[1] === homeTeam.toLowerCase());
         });
+        
         let h2hHomeWins = 0, h2hAwayWins = 0, h2hDraws = 0;
+        let h2hHomeGoals = 0, h2hAwayGoals = 0;
         h2hLogs.forEach(l => {
             const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
-            if (teams[0] === homeTeam.toLowerCase()) {
+            const isHome = teams[0] === homeTeam.toLowerCase();
+            if (isHome) {
+                h2hHomeGoals += l.homeScore; h2hAwayGoals += l.awayScore;
                 if (l.outcome === 'homeWin') h2hHomeWins++; else if (l.outcome === 'awayWin') h2hAwayWins++; else h2hDraws++;
             } else {
+                h2hHomeGoals += l.awayScore; h2hAwayGoals += l.homeScore;
                 if (l.outcome === 'awayWin') h2hHomeWins++; else if (l.outcome === 'homeWin') h2hAwayWins++; else h2hDraws++;
             }
         });
 
         const getTeamForm = (teamName) => {
-            const teamLogs = logs.filter(l => l.name.toLowerCase().includes(teamName.toLowerCase()))
-                                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                                 .slice(0, 5);
-            if (teamLogs.length === 0) return { text: "Nincs friss meccs.", goalsScored: 0, games: 0 };
+            const teamLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(teamName.toLowerCase())).slice(0, 5);
+            if (teamLogs.length === 0) return { text: "Nincs friss meccs.", goalsScored: 0, goalsConceded: 0, games: 0 };
             let goalsScored = 0, wins = 0, draws = 0, losses = 0, goalsConceded = 0;
             teamLogs.forEach(l => {
                 const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
@@ -207,29 +226,30 @@
                 goalsScored += isHome ? l.homeScore : l.awayScore;
                 goalsConceded += isHome ? l.awayScore : l.homeScore;
             });
-            return { text: `${wins}GY-${draws}D-${losses}V (${goalsScored}:${goalsConceded})`, goalsScored, games: teamLogs.length };
+            return { text: `${wins}GY-${draws}D-${losses}V (${goalsScored}:${goalsConceded})`, goalsScored, goalsConceded, games: teamLogs.length };
         };
 
-        const homeForm = getTeamForm(homeTeam);
-        const awayForm = getTeamForm(awayTeam);
+        const homeForm = getTeamForm(homeTeam.toLowerCase());
+        const awayForm = getTeamForm(awayTeam.toLowerCase());
 
         const getTeamStrength = (teamName) => {
-            let goalsScoredHome = 0, goalsConcededHome = 0, homeGames = 0;
-            let goalsScoredAway = 0, goalsConcededAway = 0, awayGames = 0;
-            logs.forEach(l => {
+            let s_home_s = 0, s_home_c = 0, w_home = 0;
+            let s_away_s = 0, s_away_c = 0, w_away = 0;
+            sortedLogs.forEach((l, index) => {
+                const weight = Math.pow(0.97, index);
                 const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
                 if (teams.length < 2) return;
                 if (teams[0] === teamName) {
-                    homeGames++; goalsScoredHome += l.homeScore; goalsConcededHome += l.awayScore;
+                    s_home_s += l.homeScore * weight; s_home_c += l.awayScore * weight; w_home += weight;
                 } else if (teams[1] === teamName) {
-                    awayGames++; goalsScoredAway += l.awayScore; goalsConcededAway += l.homeScore;
+                    s_away_s += l.awayScore * weight; s_away_c += l.homeScore * weight; w_away += weight;
                 }
             });
             return {
-                homeAttack: homeGames > 0 ? (goalsScoredHome / homeGames) / avgHomeGoals : 1,
-                homeDefense: homeGames > 0 ? (goalsConcededHome / homeGames) / avgAwayGoals : 1,
-                awayAttack: awayGames > 0 ? (goalsScoredAway / awayGames) / avgAwayGoals : 1,
-                awayDefense: awayGames > 0 ? (goalsConcededAway / awayGames) / avgHomeGoals : 1
+                homeAttack: w_home > 0 ? (s_home_s / w_home) / avgHomeGoals : 1,
+                homeDefense: w_home > 0 ? (s_home_c / w_home) / avgAwayGoals : 1,
+                awayAttack: w_away > 0 ? (s_away_s / w_away) / avgAwayGoals : 1,
+                awayDefense: w_away > 0 ? (s_away_c / w_away) / avgHomeGoals : 1
             };
         };
         
@@ -239,13 +259,28 @@
         let homeXG = homeStrength.homeAttack * awayStrength.awayDefense * avgHomeGoals;
         let awayXG = awayStrength.awayAttack * homeStrength.homeDefense * avgAwayGoals;
         
+        // Defensive Form Adjustment
         if (homeForm.games > 0) {
-            const homeFormAttackRatio = (homeForm.goalsScored / homeForm.games) / ((avgHomeGoals + avgAwayGoals)/2);
-            homeXG = homeXG * 0.7 + (homeXG * homeFormAttackRatio) * 0.3;
+            const avgGoals = (avgHomeGoals + avgAwayGoals) / 2;
+            const homeAttackRatio = (homeForm.goalsScored / homeForm.games) / avgGoals;
+            const homeDefenseRatio = (homeForm.goalsConceded / homeForm.games) / avgGoals;
+            homeXG = homeXG * 0.7 + (homeXG * homeAttackRatio) * 0.3;
+            awayXG = awayXG * 0.7 + (awayXG / homeDefenseRatio) * 0.3; // Opponent's attack modified by my defense form
         }
         if (awayForm.games > 0) {
-            const awayFormAttackRatio = (awayForm.goalsScored / awayForm.games) / ((avgHomeGoals + avgAwayGoals)/2);
-            awayXG = awayXG * 0.7 + (awayXG * awayFormAttackRatio) * 0.3;
+            const avgGoals = (avgHomeGoals + avgAwayGoals) / 2;
+            const awayAttackRatio = (awayForm.goalsScored / awayForm.games) / avgGoals;
+            const awayDefenseRatio = (awayForm.goalsConceded / awayForm.games) / avgGoals;
+            awayXG = awayXG * 0.7 + (awayXG * awayAttackRatio) * 0.3;
+            homeXG = homeXG * 0.7 + (homeXG / awayDefenseRatio) * 0.3; // Opponent's attack modified by my defense form
+        }
+
+        // H2H Adjustment
+        if (h2hLogs.length > 0) {
+            const avgH2HHomeGoals = h2hHomeGoals / h2hLogs.length;
+            const avgH2HAwayGoals = h2hAwayGoals / h2hLogs.length;
+            homeXG = homeXG * 0.85 + avgH2HHomeGoals * 0.15;
+            awayXG = awayXG * 0.85 + avgH2HAwayGoals * 0.15;
         }
         
         let maxProb = 0;
@@ -283,7 +318,8 @@
             reason: reasons.join('\n'), 
             pattern: 'Poisson Statisztika', 
             homeXG, 
-            awayXG 
+            awayXG,
+            totalXG
         };
     };
 
@@ -331,40 +367,36 @@
         };
     };
     
-    const model_Hybrid_Analyst = (homeXG, awayXG, homeOdds, drawOdds, awayOdds) => {
-        // Implied probabilities from odds
-        const probH = 1 / homeOdds;
-        const probD = 1 / drawOdds;
-        const probA = 1 / awayOdds;
-        const totalProb = probH + probD + probA;
-        const normH = probH / totalProb;
-        const normA = probA / totalProb;
-        
-        const oddsScore = normH - normA; // Range ~[-1, 1]
-        const statScore = homeXG - awayXG;
-        const normalizedStatScore = Math.tanh(statScore / 2); // Squash stat score to ~[-1, 1]
+    const model_Weighted_Analyst = (oddsModelResult, statisticalModelResult) => {
+        const { prediction: oddsPrediction } = oddsModelResult;
+        const { totalXG } = statisticalModelResult;
 
-        // Weighted average of the two scores
-        const hybridScore = (normalizedStatScore * 0.6) + (oddsScore * 0.4);
-
-        let prediction = 'draw';
-        if (hybridScore > 0.3) prediction = 'homeWin';
-        else if (hybridScore < -0.3) prediction = 'awayWin';
+        const prediction = oddsPrediction;
+        const predictedOverUnder15 = totalXG >= 1.75 ? 'over' : 'under';
+        const predictedOverUnder25 = totalXG >= 2.75 ? 'over' : 'under';
         
         let predictedScore = "1-1";
-        if (prediction === 'homeWin') predictedScore = hybridScore > 0.8 ? "2-0" : "2-1";
-        else if (prediction === 'awayWin') predictedScore = hybridScore < -0.8 ? "0-2" : "1-2";
-        
-        const [h, a] = predictedScore.split('-').map(Number);
-        const predictedTotalGoals = h + a;
+        if (prediction === 'homeWin') {
+            if (predictedOverUnder25 === 'over') predictedScore = '2-1';
+            else if (predictedOverUnder15 === 'over') predictedScore = '2-0';
+            else predictedScore = '1-0';
+        } else if (prediction === 'awayWin') {
+            if (predictedOverUnder25 === 'over') predictedScore = '1-2';
+            else if (predictedOverUnder15 === 'over') predictedScore = '0-2';
+            else predictedScore = '0-1';
+        } else { // Draw
+            if (predictedOverUnder25 === 'over') predictedScore = '2-2';
+            else if (totalXG < 1.5) predictedScore = '0-0';
+            else predictedScore = '1-1';
+        }
 
         return {
             prediction,
             predictedScore,
-            predictedOverUnder15: predictedTotalGoals >= 1.5 ? 'over' : 'under',
-            predictedOverUnder25: predictedTotalGoals >= 2.5 ? 'over' : 'under',
-            reason: `A statisztikai (xG) és odds alapú valószínűségek ötvözete. Hibrid pontszám: ${hybridScore.toFixed(2)}.`,
-            pattern: 'Hibrid Elemző'
+            predictedOverUnder15,
+            predictedOverUnder25,
+            reason: `Az Odds modell kimenetel tippjét és a Poisson modell gólbecslését (xG: ${totalXG.toFixed(2)}) ötvözi.`,
+            pattern: 'Súlyozott Elemző'
         };
     };
     
@@ -428,24 +460,29 @@
         setTimeout(() => {
             const statisticalResult = model_Statistical_Analyst(homeTeam, awayTeam);
             const oddsResult = model_Odds_Based(home, draw, away);
-            const hybridResult = (statisticalResult.homeXG !== undefined && statisticalResult.awayXG !== undefined)
-                ? model_Hybrid_Analyst(statisticalResult.homeXG, statisticalResult.awayXG, home, draw, away)
+            const weightedResult = (statisticalResult.totalXG !== undefined)
+                ? model_Weighted_Analyst(oddsResult, statisticalResult)
                 : { 
                     prediction: 'uncertain', 
                     predictedScore: '?-?', 
                     predictedOverUnder15: 'uncertain',
                     predictedOverUnder25: 'uncertain',
                     reason: 'Nem futtatható, mert a statisztikai modellhez nincs elég adat.', 
-                    pattern: 'Hibrid Adathiány' 
+                    pattern: 'Súlyozott Adathiány' 
                   };
             
             const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };
             const overUnderMap = { over: 'Felett', under: 'Alatt', uncertain: '?' };
 
-            const createCardHTML = (title, result) => `
-                <div class="p-3 bg-gray-700 rounded-lg text-left">
+            const createCardHTML = (title, result, isStatModel = false) => {
+                let outcomeHTML = `<p class="text-sm text-teal-300 mt-1">${outcomeMap[result.prediction] || 'Ismeretlen'} (${result.predictedScore})</p>`;
+                if (isStatModel) {
+                     outcomeHTML = `<p class="text-sm text-teal-300 mt-1">${outcomeMap[result.prediction] || 'Ismeretlen'} (${result.predictedScore})</p><p class="text-xs text-gray-400 mt-1">A modell a legvalószínűbb eredményt mutatja.</p>`;
+                }
+                
+                return `<div class="p-3 bg-gray-700 rounded-lg text-left">
                     <h4 class="font-bold text-teal-400">${title}</h4>
-                    <p class="text-sm text-teal-300 mt-1">${outcomeMap[result.prediction] || 'Ismeretlen'} (${result.predictedScore})</p>
+                    ${outcomeHTML}
                     <div class="grid grid-cols-2 gap-2 text-center mt-2">
                         <div class="bg-gray-800 p-2 rounded-md">
                             <p class="text-xs text-gray-400">Gólok 1.5</p>
@@ -458,6 +495,7 @@
                     </div>
                     <p class="text-xs text-gray-300 whitespace-pre-wrap mt-2">${result.reason}</p>
                 </div>`;
+            };
             
             const saveResultHTML = `
                 <div class="p-3 bg-gray-600 rounded-lg text-left">
@@ -472,9 +510,9 @@
                 </div>`;
 
             aiResultDiv.innerHTML = `<div class="space-y-3">
-                ${createCardHTML('Hibrid Elemző (Ajánlott)', hybridResult)}
+                ${createCardHTML('Súlyozott Elemző (Ajánlott)', weightedResult)}
                 ${createCardHTML('Odds Alapú Elemző', oddsResult)}
-                ${createCardHTML('Poisson Statisztika', statisticalResult)}
+                ${createCardHTML('Poisson Statisztika', statisticalResult, true)}
                 ${saveResultHTML}
             </div>`;
 
@@ -484,9 +522,10 @@
                 statPrediction: statisticalResult.prediction, statPredictedScore: statisticalResult.predictedScore, statPattern: statisticalResult.pattern,
                 statPredictedOverUnder15: statisticalResult.predictedOverUnder15, statPredictedOverUnder25: statisticalResult.predictedOverUnder25,
                 oddsPrediction: oddsResult.prediction, oddsPredictedScore: oddsResult.predictedScore, oddsPattern: oddsResult.pattern,
-                oddsPredictedOverUnder15: oddsResult.predictedOverUnder15, oddsPredictedOverUnder25: oddsResult.predictedOverUnder25,
-                hybridPrediction: hybridResult.prediction, hybridPredictedScore: hybridResult.predictedScore, hybridPattern: hybridResult.pattern,
-                hybridPredictedOverUnder15: hybridResult.predictedOverUnder15, hybridPredictedOverUnder25: hybridResult.predictedOverUnder25
+                oddsPredictedOverUnder15: oddsResult.predictedOverUnder15,
+                oddsPredictedOverUnder25: oddsResult.predictedOverUnder25,
+                weightedPrediction: weightedResult.prediction, weightedPredictedScore: weightedResult.predictedScore, weightedPattern: weightedResult.pattern,
+                weightedPredictedOverUnder15: weightedResult.predictedOverUnder15, weightedPredictedOverUnder25: weightedResult.predictedOverUnder25
             });
         }, 250);
     };
@@ -546,15 +585,35 @@
         renderLogs(); 
     };
     
+    const resetStatistics = () => {
+        if (resetStatsBtn.dataset.confirming !== 'true') {
+            resetStatsBtn.dataset.confirming = 'true';
+            resetStatsBtn.querySelector('span').textContent = 'Biztos vagy benne?';
+            setTimeout(() => {
+                resetStatsBtn.dataset.confirming = 'false';
+                resetStatsBtn.querySelector('span').textContent = 'Statisztika Törlése';
+            }, 3000);
+        } else {
+            predictionsLog = [];
+            saveToLocalStorage();
+            renderStatistics();
+            resetStatsBtn.dataset.confirming = 'false';
+            resetStatsBtn.querySelector('span').textContent = 'Statisztika Törlése';
+        }
+    };
+
     const renderStatistics = () => {
-        const modelsToTrack = ['Hibrid Elemző', 'Odds Alapú', 'Poisson Statisztika'];
+        const modelsToTrack = ['Súlyozott Elemző', 'Odds Alapú', 'Poisson Statisztika'];
         const stats = {};
         modelsToTrack.forEach(name => {
             stats[name] = { total: 0, outcomeCorrect: 0, overUnder15Correct: 0, overUnder25Correct: 0, teams: {} };
         });
 
         predictionsLog.forEach(p => {
-            const modelStat = stats[p.modelName]; if (!modelStat) return;
+             // Compatibility for old "Hibrid Elemző" logs
+            const modelName = p.modelName === 'Hibrid Elemző' ? 'Súlyozott Elemző' : p.modelName;
+            const modelStat = stats[modelName]; 
+            if (!modelStat) return;
             modelStat.total++;
             if (p.outcomeCorrect) modelStat.outcomeCorrect++;
             if (p.overUnder15Correct) modelStat.overUnder15Correct++;
@@ -642,10 +701,13 @@
             logs.unshift(newLog);
             renderLogs();
             
-            ['stat', 'odds', 'hybrid'].forEach(prefix => {
-                const modelNameMap = { stat: 'Poisson Statisztika', odds: 'Odds Alapú', hybrid: 'Hibrid Elemző' };
+            ['stat', 'odds', 'weighted'].forEach(prefix => {
+                const modelNameMap = { stat: 'Poisson Statisztika', odds: 'Odds Alapú', weighted: 'Súlyozott Elemző' };
                 const predOU15 = btn.dataset[`${prefix}PredictedOverUnder15`];
                 const predOU25 = btn.dataset[`${prefix}PredictedOverUnder25`];
+
+                 // Ensure prediction data exists before pushing
+                if (!btn.dataset[`${prefix}Prediction`]) return;
 
                 predictionsLog.unshift({
                     id: Date.now() + Math.random(),
@@ -687,6 +749,7 @@
     openStatsBtn.addEventListener('click', () => { renderStatistics(); statsModal.classList.remove('hidden'); });
     closeStatsBtn.addEventListener('click', () => { statsModal.classList.add('hidden'); });
     statsModal.addEventListener('click', (e) => { if (e.target === statsModal) { statsModal.classList.add('hidden'); } });
+    resetStatsBtn.addEventListener('click', resetStatistics);
     
     const downloadFile = (data, filename, type) => {
         const blob = new Blob([data], { type });

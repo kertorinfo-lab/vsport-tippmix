@@ -171,18 +171,20 @@
             let favoriteCount = 0;
             
             teamPredictions.forEach(p => {
-                if (!p.oddsData) return; // Guard against old data
-                const odds = JSON.parse(p.oddsData);
-                const teams = p.teams.split(' - ');
-                const isHome = teams[0].toLowerCase() === teamName.toLowerCase();
-                const isFavorite = isHome ? odds.home < odds.away : odds.away < odds.home;
+                if (!p.oddsData) return;
+                try {
+                    const odds = JSON.parse(p.oddsData);
+                    const teams = p.teams.split(' - ');
+                    const isHome = teams[0].toLowerCase() === teamName.toLowerCase();
+                    const isFavorite = isHome ? odds.home < odds.away : odds.away < odds.home;
 
-                if(isFavorite) {
-                    favoriteCount++;
-                    if (!p.outcomeCorrect) {
-                        failuresAsFavorite++;
+                    if(isFavorite) {
+                        favoriteCount++;
+                        if (!p.outcomeCorrect) {
+                            failuresAsFavorite++;
+                        }
                     }
-                }
+                } catch(e) { /* ignore old data format */ }
             });
 
             if (favoriteCount < 3) return { factor: 1.0, confidenceReduction: 0, reason: `Túl kevés (${favoriteCount}) favorit meccs.` };
@@ -394,9 +396,11 @@
                 const currentOdds = {home, draw, away};
                 const allFailedInCluster = myPastPredictions.every(p => {
                     if (!p.oddsData) return false;
-                    const pastOdds = JSON.parse(p.oddsData);
-                    const dist = Math.sqrt(Math.pow(pastOdds.home - currentOdds.home, 2) + Math.pow(pastOdds.draw - currentOdds.draw, 2));
-                    return !p.outcomeCorrect && dist < 0.3;
+                    try {
+                        const pastOdds = JSON.parse(p.oddsData);
+                        const dist = Math.sqrt(Math.pow(pastOdds.home - currentOdds.home, 2) + Math.pow(pastOdds.draw - currentOdds.draw, 2));
+                        return !p.outcomeCorrect && dist < 0.3;
+                    } catch(e) { return false; }
                 });
                 if(allFailedInCluster) {
                     if (trueProbs.home > trueProbs.away) expectedHomeGoals *= 0.85; else expectedAwayGoals *= 0.85;
@@ -436,19 +440,20 @@
                 if (totalSimGoals >= 3.5) simGoals.over35++;
             }
             
-            const predictedScore = Object.keys(simScores).reduce((a, b) => simScores[a] > simScores[b] ? a : b);
+            const predictedScore = Object.keys(simScores).reduce((a, b) => simScores[a] > simScores[b] ? a : b, '0-0');
             const [homeScore, awayScore] = predictedScore.split('-').map(Number);
             const prediction = homeScore > awayScore ? 'homeWin' : awayScore > homeScore ? 'awayWin' : 'draw';
-            
+            const totalPredictedGoals = homeScore + awayScore;
+
             const predictionStrength = simOutcomes[prediction] / SIMULATIONS;
             const confidence = predictionStrength > 0.6 ? 'Magas' : predictionStrength > 0.45 ? 'Közepes' : 'Alacsony';
             const reason = `1000 szimuláció alapján. Eloszlás: H:${(simOutcomes.homeWin/SIMULATIONS*100).toFixed(0)}%, D:${(simOutcomes.draw/SIMULATIONS*100).toFixed(0)}%, V:${(simOutcomes.awayWin/SIMULATIONS*100).toFixed(0)}%.`;
 
             return {
                 prediction, predictedScore,
-                predictedOverUnder15: (simGoals.over15 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
-                predictedOverUnder25: (simGoals.over25 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
-                predictedOverUnder35: (simGoals.over35 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
+                predictedOverUnder15: totalPredictedGoals >= 1.5 ? 'over' : 'under',
+                predictedOverUnder25: totalPredictedGoals >= 2.5 ? 'over' : 'under',
+                predictedOverUnder35: totalPredictedGoals >= 3.5 ? 'over' : 'under',
                 reason, pattern: 'Super Modell', confidence
             };
         }

@@ -165,7 +165,6 @@
 
     const model_Odds_Elemzo = (home, draw, away) => {
         const MIN_LOGS_TOTAL = 10;
-        const MIN_MATCHES_TO_CONSIDER = 5;
         const NUM_MATCHES_TO_ANALYZE = 20;
 
         if (logs.length < MIN_LOGS_TOTAL) {
@@ -177,7 +176,7 @@
                 reason: `Nincs elég adat (minimum ${MIN_LOGS_TOTAL} meccs) a historikus odds elemzéshez.`,
                 pattern: 'Odds Elemző',
                 avgTotalGoals: undefined,
-                over25Ratio: 0.5
+                confidence: 'Alacsony'
             };
         }
 
@@ -193,6 +192,7 @@
         const overUnder15 = { over: 0, under: 0 };
         const overUnder25 = { over: 0, under: 0 };
         let totalGoalsSum = 0;
+        const scoreCounts = {};
 
         similarMatches.forEach(l => {
             outcomes[l.outcome]++;
@@ -200,32 +200,30 @@
             totalGoalsSum += totalGoals;
             if (totalGoals >= 1.5) overUnder15.over++; else overUnder15.under++;
             if (totalGoals >= 2.5) overUnder25.over++; else overUnder25.under++;
+            const score = `${l.homeScore}-${l.awayScore}`;
+            scoreCounts[score] = (scoreCounts[score] || 0) + 1;
         });
 
         const avgTotalGoals = totalGoalsSum / similarMatches.length;
         const prediction = Object.keys(outcomes).reduce((a, b) => outcomes[a] > outcomes[b] ? a : b);
         
+        let predictedScore;
+        const sortedScores = Object.entries(scoreCounts).sort((a, b) => b[1] - a[1]);
+        
+        if (sortedScores.length > 0 && sortedScores[0][1] > 2) { // Need at least 3 occurrences to be confident
+            predictedScore = sortedScores[0][0];
+        } else {
+            predictedScore = `${Math.round(similarMatches.reduce((acc, l) => acc + l.homeScore, 0) / similarMatches.length)}-${Math.round(similarMatches.reduce((acc, l) => acc + l.awayScore, 0) / similarMatches.length)}`;
+        }
+        
         const over15Ratio = overUnder15.over / similarMatches.length;
         const over25Ratio = overUnder25.over / similarMatches.length;
-
+        
         const predictedOverUnder15 = over15Ratio >= 0.5 ? 'over' : 'under';
         const predictedOverUnder25 = over25Ratio >= 0.5 ? 'over' : 'under';
-        
-        let predictedScore = "1-1";
-        if (prediction === 'homeWin') {
-            if (avgTotalGoals > 2.8) predictedScore = '2-1';
-            else if (avgTotalGoals < 2.2) predictedScore = '1-0';
-            else predictedScore = '2-0';
-        } else if (prediction === 'awayWin') {
-            if (avgTotalGoals > 2.8) predictedScore = '1-2';
-            else if (avgTotalGoals < 2.2) predictedScore = '0-1';
-            else predictedScore = '0-2';
-        } else { // Draw
-            if (avgTotalGoals > 3.0) predictedScore = '2-2';
-            else if (avgTotalGoals < 2.0) predictedScore = '0-0';
-            else predictedScore = '1-1';
-        }
 
+        const predictionStrength = outcomes[prediction] / similarMatches.length;
+        const confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
 
         return {
             prediction,
@@ -235,7 +233,7 @@
             reason: `${similarMatches.length} db legközelebbi oddsú meccs alapján. Kimenetel: H(${outcomes.homeWin})-D(${outcomes.draw})-V(${outcomes.awayWin}). Gólok 2.5: ${overUnder25.over}/${similarMatches.length} (${(over25Ratio*100).toFixed(0)}%) Over.`,
             pattern: 'Odds Elemző',
             avgTotalGoals,
-            over25Ratio
+            confidence
         };
     };
 
@@ -247,7 +245,8 @@
             predictedOverUnder25: 'uncertain',
             reason: 'Nincs elég adat (minimum 5 meccs) a mintaelemzéshez.', 
             pattern: 'Minta Elemző',
-            totalGoals: undefined
+            totalGoals: undefined,
+            confidence: 'Alacsony'
         };
         
         const sortedLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -260,7 +259,7 @@
                 return teams.includes(teamName.toLowerCase());
             }).slice(0, 5);
             
-            if (teamLogs.length < 3) return { avgGoalsScored: 1.2, avgGoalsConceded: 1.2, strength: 0.5 };
+            if (teamLogs.length < 3) return { avgGoalsScored: 1.2, avgGoalsConceded: 1.2, strength: 0.5, hasEnoughData: false };
 
             let goalsScored = 0, goalsConceded = 0, points = 0;
             teamLogs.forEach(l => {
@@ -274,36 +273,34 @@
             return {
                 avgGoalsScored: goalsScored / teamLogs.length,
                 avgGoalsConceded: goalsConceded / teamLogs.length,
-                strength: points / (teamLogs.length * 3) // Form strength 0-1
+                strength: points / (teamLogs.length * 3), // Form strength 0-1
+                hasEnoughData: true
             };
         };
 
         const homeForm = getTeamForm(homeTeam, 'home');
         const awayForm = getTeamForm(awayTeam, 'away');
-
-        const prediction = homeForm.strength > awayForm.strength + 0.2 ? 'homeWin' : 
-                           awayForm.strength > homeForm.strength + 0.2 ? 'awayWin' : 'draw';
-
+        
         const expectedHomeGoals = (homeForm.avgGoalsScored + awayForm.avgGoalsConceded) / 2;
         const expectedAwayGoals = (awayForm.avgGoalsScored + homeForm.avgGoalsConceded) / 2;
         const totalGoals = expectedHomeGoals + expectedAwayGoals;
 
-        const predictedOverUnder15 = totalGoals >= 1.5 ? 'over' : 'under';
-        const predictedOverUnder25 = totalGoals >= 2.5 ? 'over' : 'under';
+        const homeScore = Math.round(expectedHomeGoals);
+        const awayScore = Math.round(expectedAwayGoals);
         
-        let homeScore = Math.round(expectedHomeGoals);
-        let awayScore = Math.round(expectedAwayGoals);
-
-        if (prediction === 'homeWin' && homeScore <= awayScore) homeScore = awayScore + 1;
-        else if (prediction === 'awayWin' && awayScore <= homeScore) awayScore = homeScore + 1;
-        else if (prediction === 'draw') {
-            const avg = Math.round(totalGoals / 2);
-            homeScore = avg;
-            awayScore = avg;
-        }
+        const prediction = homeScore > awayScore ? 'homeWin' : awayScore > homeScore ? 'awayWin' : 'draw';
         const predictedScore = `${homeScore}-${awayScore}`;
 
-        const reason = `Hazai forma (otthon): ${homeForm.strength.toFixed(2)} erősség. Vendég forma (idegenben): ${awayForm.strength.toFixed(2)} erősség. Várható gólok: ${totalGoals.toFixed(2)}.`;
+        const predictedOverUnder15 = totalGoals >= 1.5 ? 'over' : 'under';
+        const predictedOverUnder25 = totalGoals >= 2.5 ? 'over' : 'under';
+
+        const strengthDiff = Math.abs(homeForm.strength - awayForm.strength);
+        let confidence = 'Alacsony';
+        if (homeForm.hasEnoughData && awayForm.hasEnoughData) {
+            confidence = strengthDiff > 0.3 ? 'Magas' : strengthDiff > 0.15 ? 'Közepes' : 'Alacsony';
+        }
+
+        const reason = `Hazai forma (otthon): ${homeForm.strength.toFixed(2)} erősség. Vendég forma (idegenben): ${awayForm.strength.toFixed(2)} erősség. Becsült gólok: H(${expectedHomeGoals.toFixed(2)})-V(${expectedAwayGoals.toFixed(2)}).`;
 
         return {
             prediction,
@@ -312,7 +309,8 @@
             predictedOverUnder25,
             reason,
             pattern: 'Minta Elemző',
-            totalGoals
+            totalGoals,
+            confidence
         };
     };
 
@@ -325,17 +323,21 @@
                 predictedOverUnder15: 'uncertain',
                 predictedOverUnder25: 'uncertain',
                 reason: 'Nincs elég adat a gól modellezéshez (egyik alapmodell nem tudott futni).',
-                pattern: 'Gól Modell'
+                pattern: 'Gól Modell',
+                confidence: 'Alacsony'
             };
         }
 
-        const finalGoalExpectation = (oddsResult.avgTotalGoals * 0.6) + (mintaResult.totalGoals * 0.4);
+        const finalGoalExpectation = (oddsResult.avgTotalGoals * 0.65) + (mintaResult.totalGoals * 0.35);
+        const goalDiff = Math.abs(oddsResult.avgTotalGoals - mintaResult.totalGoals);
+        const confidence = goalDiff < 0.5 ? 'Magas' : goalDiff < 1.0 ? 'Közepes' : 'Alacsony';
         
         return {
             predictedOverUnder15: finalGoalExpectation >= 1.5 ? 'over' : 'under',
             predictedOverUnder25: finalGoalExpectation >= 2.5 ? 'over' : 'under',
-            reason: `Súlyozott gólbecslés. Odds-minta átlaga (${oddsResult.avgTotalGoals.toFixed(2)}) 60%-os, forma-minta (${mintaResult.totalGoals.toFixed(2)}) 40%-os súllyal. Várható gólok: ${finalGoalExpectation.toFixed(2)}.`,
-            pattern: 'Gól Modell'
+            reason: `Súlyozott gólbecslés. Odds-minta átlaga (${oddsResult.avgTotalGoals.toFixed(2)}) 65%-os, forma-minta (${mintaResult.totalGoals.toFixed(2)}) 35%-os súllyal. Várható gólok: ${finalGoalExpectation.toFixed(2)}.`,
+            pattern: 'Gól Modell',
+            confidence
         };
     };
     
@@ -403,11 +405,15 @@
             
             const outcomeMap = { homeWin: 'Hazai (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég (2)', uncertain: 'Bizonytalan' };
             const overUnderMap = { over: 'Felett', under: 'Alatt', uncertain: '?' };
+            const confidenceColors = { 'Magas': 'bg-green-600', 'Közepes': 'bg-yellow-500', 'Alacsony': 'bg-red-600', undefined: 'bg-gray-500' };
 
             const createCardHTML = (title, result) => {
                 const hasOutcome = result.prediction && result.predictedScore;
                 return `<div class="p-3 bg-gray-700 rounded-lg text-left">
-                    <h4 class="font-bold text-teal-400">${title}</h4>
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-teal-400">${title}</h4>
+                        <span class="text-xs font-bold text-white px-2 py-0.5 rounded-full ${confidenceColors[result.confidence]}">${result.confidence || ''}</span>
+                    </div>
                     ${hasOutcome ? `<p class="text-sm text-teal-300 mt-1">${outcomeMap[result.prediction] || 'Ismeretlen'} (${result.predictedScore})</p>` : `<p class="text-xs text-gray-400 mt-1">Ez a modell csak gólokat becsül.</p>`}
                     <div class="grid grid-cols-2 gap-2 text-center mt-2">
                         <div class="bg-gray-800 p-2 rounded-md">

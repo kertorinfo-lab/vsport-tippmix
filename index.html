@@ -166,7 +166,7 @@
     const model_Odds_Elemzo = (home, draw, away) => {
         const MIN_LOGS_TOTAL = 10;
         const MIN_MATCHES_TO_CONSIDER = 5;
-        const NUM_MATCHES_TO_ANALYZE = 15;
+        const NUM_MATCHES_TO_ANALYZE = 20;
 
         if (logs.length < MIN_LOGS_TOTAL) {
             return {
@@ -176,29 +176,18 @@
                 predictedOverUnder25: 'uncertain',
                 reason: `Nincs elég adat (minimum ${MIN_LOGS_TOTAL} meccs) a historikus odds elemzéshez.`,
                 pattern: 'Odds Elemző',
-                avgTotalGoals: undefined
+                avgTotalGoals: undefined,
+                over25Ratio: 0.5
             };
         }
 
         const matchesWithDistance = logs.map(l => {
-            const distance = Math.abs(l.home - home) + Math.abs(l.draw - draw) + Math.abs(l.away - away);
+            const distance = Math.sqrt(Math.pow(l.home - home, 2) + Math.pow(l.draw - draw, 2) + Math.pow(l.away - away, 2));
             return { ...l, distance };
         });
 
         matchesWithDistance.sort((a, b) => a.distance - b.distance);
         const similarMatches = matchesWithDistance.slice(0, NUM_MATCHES_TO_ANALYZE);
-
-        if (similarMatches.length < MIN_MATCHES_TO_CONSIDER) {
-            return {
-                prediction: 'uncertain',
-                predictedScore: '?-?',
-                predictedOverUnder15: 'uncertain',
-                predictedOverUnder25: 'uncertain',
-                reason: `Túl kevés (${logs.length}) historikus meccs van az adatbázisban az elemzéshez.`,
-                pattern: 'Odds Elemző',
-                avgTotalGoals: undefined
-            };
-        }
         
         const outcomes = { homeWin: 0, draw: 0, awayWin: 0 };
         const overUnder15 = { over: 0, under: 0 };
@@ -215,13 +204,27 @@
 
         const avgTotalGoals = totalGoalsSum / similarMatches.length;
         const prediction = Object.keys(outcomes).reduce((a, b) => outcomes[a] > outcomes[b] ? a : b);
-        const predictedOverUnder15 = overUnder15.over > overUnder15.under ? 'over' : 'under';
-        const predictedOverUnder25 = overUnder25.over > overUnder25.under ? 'over' : 'under';
+        
+        const over15Ratio = overUnder15.over / similarMatches.length;
+        const over25Ratio = overUnder25.over / similarMatches.length;
+
+        const predictedOverUnder15 = over15Ratio >= 0.5 ? 'over' : 'under';
+        const predictedOverUnder25 = over25Ratio >= 0.5 ? 'over' : 'under';
         
         let predictedScore = "1-1";
-        if (prediction === 'homeWin') predictedScore = predictedOverUnder25 === 'over' ? '2-1' : '1-0';
-        else if (prediction === 'awayWin') predictedScore = predictedOverUnder25 === 'over' ? '1-2' : '0-1';
-        else predictedScore = predictedOverUnder25 === 'over' ? '2-2' : '1-1';
+        if (prediction === 'homeWin') {
+            if (avgTotalGoals > 2.8) predictedScore = '2-1';
+            else if (avgTotalGoals < 2.2) predictedScore = '1-0';
+            else predictedScore = '2-0';
+        } else if (prediction === 'awayWin') {
+            if (avgTotalGoals > 2.8) predictedScore = '1-2';
+            else if (avgTotalGoals < 2.2) predictedScore = '0-1';
+            else predictedScore = '0-2';
+        } else { // Draw
+            if (avgTotalGoals > 3.0) predictedScore = '2-2';
+            else if (avgTotalGoals < 2.0) predictedScore = '0-0';
+            else predictedScore = '1-1';
+        }
 
 
         return {
@@ -229,9 +232,10 @@
             predictedScore,
             predictedOverUnder15,
             predictedOverUnder25,
-            reason: `${similarMatches.length} db legközelebbi oddsú meccs alapján. Kimenetel: H(${outcomes.homeWin})-D(${outcomes.draw})-V(${outcomes.awayWin}). Gólok 2.5: O(${overUnder25.over})-U(${overUnder25.under}).`,
+            reason: `${similarMatches.length} db legközelebbi oddsú meccs alapján. Kimenetel: H(${outcomes.homeWin})-D(${outcomes.draw})-V(${outcomes.awayWin}). Gólok 2.5: ${overUnder25.over}/${similarMatches.length} (${(over25Ratio*100).toFixed(0)}%) Over.`,
             pattern: 'Odds Elemző',
-            avgTotalGoals
+            avgTotalGoals,
+            over25Ratio
         };
     };
 
@@ -256,7 +260,7 @@
                 return teams.includes(teamName.toLowerCase());
             }).slice(0, 5);
             
-            if (teamLogs.length === 0) return { text: "N/A", avgGoalsScored: 1, avgGoalsConceded: 1, strength: 0.5 };
+            if (teamLogs.length < 3) return { avgGoalsScored: 1.2, avgGoalsConceded: 1.2, strength: 0.5 };
 
             let goalsScored = 0, goalsConceded = 0, points = 0;
             teamLogs.forEach(l => {
@@ -277,20 +281,29 @@
         const homeForm = getTeamForm(homeTeam, 'home');
         const awayForm = getTeamForm(awayTeam, 'away');
 
-        const prediction = homeForm.strength > awayForm.strength + 0.15 ? 'homeWin' : 
-                           awayForm.strength > homeForm.strength + 0.15 ? 'awayWin' : 'draw';
+        const prediction = homeForm.strength > awayForm.strength + 0.2 ? 'homeWin' : 
+                           awayForm.strength > homeForm.strength + 0.2 ? 'awayWin' : 'draw';
 
-        const totalGoals = (homeForm.avgGoalsScored + awayForm.avgGoalsScored) / 2 + (homeForm.avgGoalsConceded + awayForm.avgGoalsConceded) / 2;
+        const expectedHomeGoals = (homeForm.avgGoalsScored + awayForm.avgGoalsConceded) / 2;
+        const expectedAwayGoals = (awayForm.avgGoalsScored + homeForm.avgGoalsConceded) / 2;
+        const totalGoals = expectedHomeGoals + expectedAwayGoals;
 
         const predictedOverUnder15 = totalGoals >= 1.5 ? 'over' : 'under';
         const predictedOverUnder25 = totalGoals >= 2.5 ? 'over' : 'under';
+        
+        let homeScore = Math.round(expectedHomeGoals);
+        let awayScore = Math.round(expectedAwayGoals);
 
-        let predictedScore = "1-1";
-         if (prediction === 'homeWin') predictedScore = predictedOverUnder25 === 'over' ? '2-1' : '1-0';
-        else if (prediction === 'awayWin') predictedScore = predictedOverUnder25 === 'over' ? '1-2' : '0-1';
-        else predictedScore = predictedOverUnder25 === 'over' ? '2-2' : '1-1';
+        if (prediction === 'homeWin' && homeScore <= awayScore) homeScore = awayScore + 1;
+        else if (prediction === 'awayWin' && awayScore <= homeScore) awayScore = homeScore + 1;
+        else if (prediction === 'draw') {
+            const avg = Math.round(totalGoals / 2);
+            homeScore = avg;
+            awayScore = avg;
+        }
+        const predictedScore = `${homeScore}-${awayScore}`;
 
-        const reason = `Hazai forma (utolsó 5 otthoni): ${homeForm.strength.toFixed(2)} erősség. Vendég forma (utolsó 5 idegenbeli): ${awayForm.strength.toFixed(2)} erősség. Várható gólok: ${totalGoals.toFixed(2)}.`;
+        const reason = `Hazai forma (otthon): ${homeForm.strength.toFixed(2)} erősség. Vendég forma (idegenben): ${awayForm.strength.toFixed(2)} erősség. Várható gólok: ${totalGoals.toFixed(2)}.`;
 
         return {
             prediction,
@@ -316,12 +329,12 @@
             };
         }
 
-        const finalGoalExpectation = (oddsResult.avgTotalGoals * 0.5) + (mintaResult.totalGoals * 0.5);
+        const finalGoalExpectation = (oddsResult.avgTotalGoals * 0.6) + (mintaResult.totalGoals * 0.4);
         
         return {
             predictedOverUnder15: finalGoalExpectation >= 1.5 ? 'over' : 'under',
             predictedOverUnder25: finalGoalExpectation >= 2.5 ? 'over' : 'under',
-            reason: `Az odds-minta (${oddsResult.avgTotalGoals.toFixed(2)}) és a forma-minta (${mintaResult.totalGoals.toFixed(2)}) gólátlagainak kombinációja. Várható gólok: ${finalGoalExpectation.toFixed(2)}.`,
+            reason: `Súlyozott gólbecslés. Odds-minta átlaga (${oddsResult.avgTotalGoals.toFixed(2)}) 60%-os, forma-minta (${mintaResult.totalGoals.toFixed(2)}) 40%-os súllyal. Várható gólok: ${finalGoalExpectation.toFixed(2)}.`,
             pattern: 'Gól Modell'
         };
     };

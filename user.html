@@ -29,7 +29,7 @@
 
     <div id="waiting-room-page" class="hidden flex-col items-center justify-center min-h-screen text-center p-4">
         <div class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
-            <svg class="mx-auto h-16 w-16 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="mx-auto h-16 w-16 text-purple-500" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h1 class="text-3xl font-bold text-slate-900 mt-4">Váróterem</h1>
@@ -131,12 +131,10 @@ const AI_MODELS = {
         
         let prediction = Object.keys(outcomes).reduce((a, b) => outcomes[a] > outcomes[b] ? a : b);
         
-        // VSport Dynamic Bias Layer
         if (isVSport) {
             const favWinRate = currentCluster.startsWith('fav') ? outcomes.homeWin / similarMatches.length : 1 - (outcomes.awayWin / similarMatches.length);
-            const biasFactor = 1 + (favWinRate - 0.5) * 0.2; // Increase/decrease by up to 10%
+            const biasFactor = 1 + (favWinRate - 0.5) * 0.2;
             outcomes.homeWin *= biasFactor;
-
             if (draw > 3.5) outcomes.draw *= 0.5;
             prediction = Object.keys(outcomes).reduce((a, b) => outcomes[a] > outcomes[b] ? a : b);
             reason += ` [VSport bias: Dinamikus favorit súlyozás (${biasFactor.toFixed(2)}x).]`;
@@ -158,15 +156,12 @@ const AI_MODELS = {
             predictedOverUnder15: (overUnder['15'].over / similarMatches.length) >= 0.5 ? 'over' : 'under',
             predictedOverUnder25: (overUnder['25'].over / similarMatches.length) >= 0.5 ? 'over' : 'under',
             predictedOverUnder35: (overUnder['35'].over / similarMatches.length) >= 0.5 ? 'over' : 'under',
-            reason,
-            pattern: 'Odds Elemző',
-            confidence,
-            predictionStrength
+            reason, pattern: 'Odds Elemző', confidence, predictionStrength
         };
     },
 
     model_Minta_Elemzo(homeTeam, awayTeam, isVSport = false) {
-         if (!isVSport) { // Fallback to old logic if not in VSport mode
+         if (!isVSport) {
             const sortedLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             const homeLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase())).slice(0,5);
             const awayLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase())).slice(0,5);
@@ -184,7 +179,6 @@ const AI_MODELS = {
             };
          }
 
-         // VSport Global Streak Logic
          const lastLogs = logs.slice(0, 15);
          if (lastLogs.length < 10) {
              return {
@@ -222,10 +216,10 @@ const AI_MODELS = {
 
          let prediction = 'uncertain';
          if (drawProbability > 0.5) prediction = 'draw';
-         else if (favWinProbability > 0.65) prediction = 'homeWin'; // Assume home is favorite for simplicity
+         else if (favWinProbability > 0.65) prediction = 'homeWin';
          else if (favWinProbability < 0.35) prediction = 'awayWin';
          
-         const streakLength = Math.max(currentStreaks.draw); // Extend this for more streak types
+         const streakLength = Math.max(currentStreaks.draw);
 
          return {
              prediction, predictedScore: '?-?', 
@@ -233,77 +227,46 @@ const AI_MODELS = {
              predictedOverUnder25: over25Probability > 0.5 ? 'over' : 'under',
              predictedOverUnder35: over25Probability > 0.7 ? 'over' : 'under',
              reason: `Globális sorozat elemzés. Döntetlen arány: ${(drawProbability*100).toFixed(0)}%. Favorit győzelmi arány: ${(favWinProbability*100).toFixed(0)}%.`, 
-             pattern: 'Minta Elemző',
-             confidence: 'Közepes',
-             streakLength
+             pattern: 'Minta Elemző', confidence: 'Közepes', streakLength
          };
     }
 };
 
 // --- CORE APP LOGIC ---
-
-// Betölti az adatbázist, amit az admin oldal generál
 const loadFromLocalStorage = () => {
     const storedLogs = localStorage.getItem('tippmixLogs');
     if (storedLogs) logs = JSON.parse(storedLogs);
 };
 
-// A két modell eredményét egyetlen, biztos tipppé alakítja
 const synthesizeResults = (oddsResult, mintaResult) => {
     const confidenceScore = { 'Magas': 3, 'Közepes': 2, 'Alacsony': 1, 'Bizonytalan': 0, undefined: 0 };
     const oddsScore = confidenceScore[oddsResult.confidence] || 0;
     const mintaScore = confidenceScore[mintaResult.confidence] || 0;
 
-    // Ha mindkettő bizonytalan
     if (oddsResult.prediction === 'uncertain' && mintaResult.prediction === 'uncertain') {
-        return {
-            prediction: 'Bizonytalan',
-            reason: 'Egyik modell sem tudott egyértelmű tippet adni a rendelkezésre álló adatok alapján.'
-        };
+        return { prediction: 'Bizonytalan', reason: 'Egyik modell sem tudott egyértelmű tippet adni a rendelkezésre álló adatok alapján.' };
     }
     
-    // Ha egyetértenek
     if (oddsResult.prediction === mintaResult.prediction && oddsResult.prediction !== 'uncertain') {
-         return {
-            prediction: oddsResult.prediction,
-            reason: `Mindkét modell (${oddsResult.pattern}, ${mintaResult.pattern}) egyetért a kimenetelben. Az Odds Elemző ${oddsResult.confidence} magabiztossággal javasolja ezt.`
-        };
+         return { prediction: oddsResult.prediction, reason: `Mindkét modell (${oddsResult.pattern}, ${mintaResult.pattern}) egyetért a kimenetelben. Az Odds Elemző ${oddsResult.confidence} magabiztossággal javasolja ezt.` };
     }
     
-    // Ha az egyik sokkal magabiztosabb
-    if (oddsScore > mintaScore + 1) { // Jelentős a különbség
-        return {
-            prediction: oddsResult.prediction,
-            reason: `Az "${oddsResult.pattern}" modell (${oddsResult.confidence}) sokkal magabiztosabb, mint a másik modell. Javaslata: ${oddsResult.prediction}.`
-        };
+    if (oddsScore > mintaScore + 1) {
+        return { prediction: oddsResult.prediction, reason: `Az "${oddsResult.pattern}" modell (${oddsResult.confidence}) sokkal magabiztosabb, mint a másik modell. Javaslata: ${outcomeMap[oddsResult.prediction]}.` };
     }
      if (mintaScore > oddsScore + 1) {
-        return {
-            prediction: mintaResult.prediction,
-            reason: `A "${mintaResult.pattern}" modell (${mintaResult.confidence}) sokkal magabiztosabb, mint a másik modell. Javaslata: ${mintaResult.prediction}.`
-        };
+        return { prediction: mintaResult.prediction, reason: `A "${mintaResult.pattern}" modell (${mintaResult.confidence}) sokkal magabiztosabb, mint a másik modell. Javaslata: ${outcomeMap[mintaResult.prediction]}.` };
     }
 
-    // Ha nincs egyetértés és a magabiztosság hasonló, az Odds Elemzőt preferáljuk, mert több adaton alapul
     if (oddsResult.prediction !== 'uncertain') {
-        return {
-            prediction: oddsResult.prediction,
-            reason: `A modellek nem értenek egyet. A több adaton alapuló "${oddsResult.pattern}" (${oddsResult.confidence}) javaslatát részesítjük előnyben.`
-        };
+        return { prediction: oddsResult.prediction, reason: `A modellek nem értenek egyet. A több adaton alapuló "${oddsResult.pattern}" (${oddsResult.confidence}) javaslatát részesítjük előnyben.` };
     }
 
-    // Végső esetben a Minta Elemző tippje
     if (mintaResult.prediction !== 'uncertain') {
-        return {
-            prediction: mintaResult.prediction,
-            reason: `Az Odds Elemző bizonytalan volt, így a "${mintaResult.pattern}" (${mintaResult.confidence}) javaslatát mutatjuk.`
-        };
+        return { prediction: mintaResult.prediction, reason: `Az Odds Elemző bizonytalan volt, így a "${mintaResult.pattern}" (${mintaResult.confidence}) javaslatát mutatjuk.` };
     }
 
-    return {
-        prediction: 'Bizonytalan',
-        reason: 'A modellek ellentmondásos vagy bizonytalan eredményt adtak.'
-    };
+    return { prediction: 'Bizonytalan', reason: 'A modellek ellentmondásos vagy bizonytalan eredményt adtak.' };
 };
 
 const runAIAnalysis = () => {
@@ -322,28 +285,17 @@ const runAIAnalysis = () => {
     aiResultDiv.innerHTML = `<div class="flex items-center justify-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Elemzés...</span></div>`;
 
     setTimeout(() => {
-        loadFromLocalStorage(); // Mindig friss adatbázissal dolgozzon
+        loadFromLocalStorage();
         const oddsResult = AI_MODELS.model_Odds_Elemzo(home, draw, away, isVSport);
         const mintaResult = AI_MODELS.model_Minta_Elemzo(homeTeam, awayTeam, isVSport);
-        
         const finalTip = synthesizeResults(oddsResult, mintaResult);
-
         const outcomeMap = { homeWin: 'Hazai győzelem (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég győzelem (2)', uncertain: 'Bizonytalan', Bizonytalan: 'Nincs egyértelmű tipp' };
         const outcomeColor = { homeWin: 'text-green-400', draw: 'text-yellow-400', awayWin: 'text-red-400', uncertain: 'text-gray-400', Bizonytalan: 'text-gray-400'};
 
         if (finalTip.prediction === 'Bizonytalan') {
-            aiResultDiv.innerHTML = `
-                <div class="p-4 bg-gray-700 rounded-lg">
-                    <h3 class="font-bold text-xl ${outcomeColor[finalTip.prediction]}">Nincs egyértelmű tipp</h3>
-                    <p class="text-gray-300 text-sm mt-2">${finalTip.reason}</p>
-                </div>`;
+            aiResultDiv.innerHTML = `<div class="p-4 bg-gray-700 rounded-lg"><h3 class="font-bold text-xl ${outcomeColor[finalTip.prediction]}">Nincs egyértelmű tipp</h3><p class="text-gray-300 text-sm mt-2">${finalTip.reason}</p></div>`;
         } else {
-            aiResultDiv.innerHTML = `
-                <div class="p-4 bg-gray-700 rounded-lg">
-                    <p class="text-sm text-teal-400 font-bold uppercase tracking-wider">A Javasolt Tipp</p>
-                    <h3 class="font-bold text-3xl mt-1 ${outcomeColor[finalTip.prediction]}">${outcomeMap[finalTip.prediction]}</h3>
-                    <p class="text-gray-300 text-sm mt-3 pt-3 border-t border-gray-600">${finalTip.reason}</p>
-                </div>`;
+            aiResultDiv.innerHTML = `<div class="p-4 bg-gray-700 rounded-lg"><p class="text-sm text-teal-400 font-bold uppercase tracking-wider">A Javasolt Tipp</p><h3 class="font-bold text-3xl mt-1 ${outcomeColor[finalTip.prediction]}">${outcomeMap[finalTip.prediction]}</h3><p class="text-gray-300 text-sm mt-3 pt-3 border-t border-gray-600">${finalTip.reason}</p></div>`;
         }
     }, 500);
 };
@@ -352,53 +304,49 @@ const runAIAnalysis = () => {
 // --- PAGE ROUTING & AUTH SIMULATION ---
 const showPage = (pageToShow) => {
     loginPage.style.display = 'none';
-    waitingRoomPage.style.display = 'none';
+    waitingRoomPage.classList.add('hidden'); // Use class to hide
     appPage.style.display = 'none';
 
     if (pageToShow === 'login') loginPage.style.display = 'flex';
     if (pageToShow === 'waiting') {
         waitingRoomPage.style.display = 'flex';
-        waitingRoomPage.classList.remove('hidden'); // Ensure it is visible
+        waitingRoomPage.classList.remove('hidden');
     }
     if (pageToShow === 'app') appPage.style.display = 'block';
 };
 
 const checkWaitingRoom = () => {
     const status = localStorage.getItem('waitingRoomStatus');
-    const isLoggedIn = !!localStorage.getItem('loggedInUser');
+    const isLoggedIn = !!sessionStorage.getItem('loggedInUser');
 
     if (status === 'open' && isLoggedIn) {
-        clearInterval(waitingRoomInterval);
+        if (waitingRoomInterval) clearInterval(waitingRoomInterval);
         waitingRoomInterval = null;
         showPage('app');
     } else if (status === 'closed' && appPage.style.display === 'block') {
-        // Ha az admin időközben bezárta, visszadobjuk a váróba
         showPage('waiting');
         startWaitingRoomCheck();
     }
 };
 
-
 const startWaitingRoomCheck = () => {
     if (waitingRoomInterval) clearInterval(waitingRoomInterval);
-    // Először azonnal ellenőriz, hátha már nyitva van
     checkWaitingRoom(); 
-    // Majd beállít egy időzítőt a további ellenőrzésekre
-    waitingRoomInterval = setInterval(checkWaitingRoom, 2000); // 2 másodpercenként
+    waitingRoomInterval = setInterval(checkWaitingRoom, 2000);
 };
 
 // --- EVENT LISTENERS ---
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = e.target.elements.name.value;
-    localStorage.setItem('loggedInUser', name);
+    sessionStorage.setItem('loggedInUser', name); // JAVÍTVA
     appWelcomeUser.textContent = `Szia, ${name}!`;
     showPage('waiting');
     startWaitingRoomCheck();
 });
 
 logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('loggedInUser');
+    sessionStorage.removeItem('loggedInUser'); // JAVÍTVA
     if (waitingRoomInterval) clearInterval(waitingRoomInterval);
     showPage('login');
 });
@@ -413,7 +361,7 @@ document.querySelectorAll('.ai-input, .vsport-mode').forEach(input => {
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     loadFromLocalStorage();
-    const loggedInUser = localStorage.getItem('loggedInUser');
+    const loggedInUser = sessionStorage.getItem('loggedInUser'); // JAVÍTVA
     if (loggedInUser) {
         appWelcomeUser.textContent = `Szia, ${loggedInUser}!`;
         showPage('waiting');
@@ -422,7 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showPage('login');
     }
 
-    // Figyeljük, ha egy másik ablakban változik a váró állapota
     window.addEventListener('storage', (event) => {
         if (event.key === 'waitingRoomStatus') {
             checkWaitingRoom();

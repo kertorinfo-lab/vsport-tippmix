@@ -27,9 +27,9 @@
         </div>
     </div>
 
-    <div id="waiting-room-page" class="hidden flex-col items-center justify-center min-h-screen text-center p-4">
+    <div id="waiting-room-page" class="hidden items-center justify-center min-h-screen text-center p-4">
         <div class="w-full max-w-lg bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
-            <svg class="mx-auto h-16 w-16 text-purple-500" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="mx-auto h-16 w-16 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <h1 class="text-3xl font-bold text-slate-900 mt-4">Váróterem</h1>
@@ -79,7 +79,7 @@ const appWelcomeUser = document.getElementById('app-welcome-user');
 const aiResultDiv = document.querySelector('.ai-result');
 
 // --- APP STATE ---
-let logs = []; // Ezt az adatbázist használják a modellek
+let logs = [];
 let analysisTimeout;
 let waitingRoomInterval;
 
@@ -191,7 +191,7 @@ const AI_MODELS = {
 
          const weights = [1.5, 1.2, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4];
          let streakCounts = { draw: 0, over25: 0, favWin: 0, totalWeight: 0, favCount: 0 };
-         let currentStreaks = { draw: 0, under: 0, over: 0 };
+         let currentStreaks = { draw: 0 };
 
          lastLogs.slice(0,10).forEach((l, index) => {
              const weight = weights[index] || 0.4;
@@ -239,6 +239,7 @@ const loadFromLocalStorage = () => {
 };
 
 const synthesizeResults = (oddsResult, mintaResult) => {
+    const outcomeMap = { homeWin: 'Hazai győzelem (1)', draw: 'Döntetlen (X)', awayWin: 'Vendég győzelem (2)'};
     const confidenceScore = { 'Magas': 3, 'Közepes': 2, 'Alacsony': 1, 'Bizonytalan': 0, undefined: 0 };
     const oddsScore = confidenceScore[oddsResult.confidence] || 0;
     const mintaScore = confidenceScore[mintaResult.confidence] || 0;
@@ -300,26 +301,21 @@ const runAIAnalysis = () => {
     }, 500);
 };
 
-
 // --- PAGE ROUTING & AUTH SIMULATION ---
 const showPage = (pageToShow) => {
     loginPage.style.display = 'none';
-    waitingRoomPage.classList.add('hidden'); // Use class to hide
+    waitingRoomPage.style.display = 'none';
     appPage.style.display = 'none';
 
     if (pageToShow === 'login') loginPage.style.display = 'flex';
-    if (pageToShow === 'waiting') {
-        waitingRoomPage.style.display = 'flex';
-        waitingRoomPage.classList.remove('hidden');
-    }
+    if (pageToShow === 'waiting') waitingRoomPage.style.display = 'flex';
     if (pageToShow === 'app') appPage.style.display = 'block';
 };
 
 const checkWaitingRoom = () => {
     const status = localStorage.getItem('waitingRoomStatus');
-    const isLoggedIn = !!sessionStorage.getItem('loggedInUser');
 
-    if (status === 'open' && isLoggedIn) {
+    if (status === 'open') {
         if (waitingRoomInterval) clearInterval(waitingRoomInterval);
         waitingRoomInterval = null;
         showPage('app');
@@ -337,18 +333,15 @@ const startWaitingRoomCheck = () => {
 
 // --- EVENT LISTENERS ---
 loginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Megakadályozza az oldal újratöltését
     const name = e.target.elements.name.value;
-    sessionStorage.setItem('loggedInUser', name); // JAVÍTVA
     appWelcomeUser.textContent = `Szia, ${name}!`;
     showPage('waiting');
     startWaitingRoomCheck();
 });
 
 logoutBtn.addEventListener('click', () => {
-    sessionStorage.removeItem('loggedInUser'); // JAVÍTVA
-    if (waitingRoomInterval) clearInterval(waitingRoomInterval);
-    showPage('login');
+    location.reload(); // A kijelentkezés egyszerűen újratölti az oldalt, ami visszadob a loginra
 });
 
 document.querySelectorAll('.ai-input, .vsport-mode').forEach(input => {
@@ -360,19 +353,19 @@ document.querySelectorAll('.ai-input, .vsport-mode').forEach(input => {
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Betöltjük az adatbázist
     loadFromLocalStorage();
-    const loggedInUser = sessionStorage.getItem('loggedInUser'); // JAVÍTVA
-    if (loggedInUser) {
-        appWelcomeUser.textContent = `Szia, ${loggedInUser}!`;
-        showPage('waiting');
-        startWaitingRoomCheck();
-    } else {
-        showPage('login');
-    }
 
+    // Alapértelmezetten mindig a login oldalt mutatjuk
+    showPage('login');
+
+    // Figyeljük, ha egy másik ablakban (az admin) változik a váró állapota
     window.addEventListener('storage', (event) => {
         if (event.key === 'waitingRoomStatus') {
-            checkWaitingRoom();
+            // Csak akkor ellenőrizzük, ha a felhasználó már a váróban van
+            if (waitingRoomPage.style.display === 'flex') {
+                checkWaitingRoom();
+            }
         }
     });
 });

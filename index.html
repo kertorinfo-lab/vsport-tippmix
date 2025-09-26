@@ -374,7 +374,6 @@
 
             // Self-correction
             const myPastPredictions = predictionsLog.filter(p => p.modelName === 'Super Modell').slice(0, 3);
-            let recentFailuresOnSimilarOdds = 0;
             if(myPastPredictions.length === 3) {
                 const currentOdds = {home, draw, away};
                 const allFailed = myPastPredictions.every(p => {
@@ -418,8 +417,14 @@
                 if (totalSimGoals >= 3.5) simGoals.over35++;
             }
             
-            const prediction = Object.keys(simOutcomes).reduce((a, b) => simOutcomes[a] > simOutcomes[b] ? a : b);
+            // 5. Aggregate Results
             const predictedScore = Object.keys(simScores).reduce((a, b) => simScores[a] > simScores[b] ? a : b);
+            const [homeScore, awayScore] = predictedScore.split('-').map(Number);
+            const prediction = homeScore > awayScore ? 'homeWin' : awayScore > homeScore ? 'awayWin' : 'draw';
+            
+            const predictedOverUnder15 = (simGoals.over15 / SIMULATIONS) >= 0.5 ? 'over' : 'under';
+            const predictedOverUnder25 = (simGoals.over25 / SIMULATIONS) >= 0.5 ? 'over' : 'under';
+            const predictedOverUnder35 = (simGoals.over35 / SIMULATIONS) >= 0.5 ? 'over' : 'under';
 
             const predictionStrength = simOutcomes[prediction] / SIMULATIONS;
             const confidence = predictionStrength > 0.6 ? 'Magas' : predictionStrength > 0.45 ? 'Közepes' : 'Alacsony';
@@ -427,9 +432,9 @@
 
             return {
                 prediction, predictedScore,
-                predictedOverUnder15: (simGoals.over15 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
-                predictedOverUnder25: (simGoals.over25 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
-                predictedOverUnder35: (simGoals.over35 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
+                predictedOverUnder15,
+                predictedOverUnder25,
+                predictedOverUnder35,
                 reason, pattern: 'Super Modell', confidence
             };
         }

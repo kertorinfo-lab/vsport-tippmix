@@ -171,6 +171,7 @@
             let favoriteCount = 0;
             
             teamPredictions.forEach(p => {
+                if (!p.oddsData) return; // Guard against old data
                 const odds = JSON.parse(p.oddsData);
                 const teams = p.teams.split(' - ');
                 const isHome = teams[0].toLowerCase() === teamName.toLowerCase();
@@ -189,7 +190,7 @@
             const failureRate = failuresAsFavorite / favoriteCount;
 
             if (failureRate > 0.6) {
-                return { factor: 1.25, confidenceReduction: 1, reason: `Gyakran borítja a papírformát favoritként (${(failureRate*100).toFixed(0)}%).` }; // Increase variance, reduce confidence
+                return { factor: 1.25, confidenceReduction: 1, reason: `Gyakran borítja a papírformát favoritként (${(failureRate*100).toFixed(0)}%).` };
             }
             return { factor: 1.0, confidenceReduction: 0, reason: "Nincs szignifikáns torzulás." };
         },
@@ -206,7 +207,6 @@
                 };
             }
             
-            // Odds Clustering
             const getCluster = (h, d, a) => {
                 const h_c = h < 1.8 ? 'fav' : h < 2.5 ? 'mid' : 'dog';
                 const d_c = d < 3.3 ? 'low' : d < 4.0 ? 'mid' : 'high';
@@ -251,7 +251,6 @@
             const predictionStrength = outcomes[prediction] / similarMatches.length;
             let confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
             
-            // Distortion check
             const homeDistortion = this.getDistortionFactor(homeTeam);
             const awayDistortion = this.getDistortionFactor(awayTeam);
             let reason = `${similarMatches.length} meccs a(z) "${currentCluster}" klaszterből. Kimenetel: H(${outcomes.homeWin})-D(${outcomes.draw})-V(${outcomes.awayWin}).`;
@@ -392,11 +391,12 @@
 
             const myPastPredictions = predictionsLog.filter(p => p.modelName === 'Super Modell').slice(0, 3);
             if(myPastPredictions.length === 3) {
-                const currentOddsCluster = this.model_Odds_Elemzo(home, draw, away, homeTeam, awayTeam).pattern;
+                const currentOdds = {home, draw, away};
                 const allFailedInCluster = myPastPredictions.every(p => {
+                    if (!p.oddsData) return false;
                     const pastOdds = JSON.parse(p.oddsData);
-                    const pastCluster = this.model_Odds_Elemzo(pastOdds.home, pastOdds.draw, pastOdds.away, '','').pattern;
-                    return !p.outcomeCorrect && pastCluster === currentCluster;
+                    const dist = Math.sqrt(Math.pow(pastOdds.home - currentOdds.home, 2) + Math.pow(pastOdds.draw - currentOdds.draw, 2));
+                    return !p.outcomeCorrect && dist < 0.3;
                 });
                 if(allFailedInCluster) {
                     if (trueProbs.home > trueProbs.away) expectedHomeGoals *= 0.85; else expectedAwayGoals *= 0.85;

@@ -215,7 +215,17 @@
                 return `${h_c}-${d_c}`;
             };
             const currentCluster = getCluster(home, draw, away);
-            const similarMatches = logs.filter(l => getCluster(l.home, l.draw, l.away) === currentCluster);
+            let similarMatches = logs.filter(l => getCluster(l.home, l.draw, l.away) === currentCluster);
+
+            // Bias layer
+            if (currentCluster.startsWith('fav') && (similarMatches.filter(m => (m.homeScore+m.awayScore) > 2.5).length / similarMatches.length) < 0.4) {
+                 similarMatches.forEach(m => m.biasAdjustedGoals = (m.homeScore + m.awayScore) * 0.9); // Under bias
+            }
+            if (draw > 3.5) {
+                // Reduce likelihood of draw if odds are high
+                similarMatches = similarMatches.filter(m => m.outcome !== 'draw');
+            }
+
 
             if (similarMatches.length < 5) {
                 return {
@@ -232,7 +242,7 @@
 
             similarMatches.forEach(l => {
                 outcomes[l.outcome]++;
-                const totalGoals = l.homeScore + l.awayScore;
+                const totalGoals = l.biasAdjustedGoals || (l.homeScore + l.awayScore);
                 if (totalGoals >= 1.5) overUnder['15'].over++;
                 if (totalGoals >= 2.5) overUnder['25'].over++;
                 if (totalGoals >= 3.5) overUnder['35'].over++;
@@ -253,14 +263,8 @@
             const predictionStrength = outcomes[prediction] / similarMatches.length;
             let confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
             
-            const homeDistortion = this.getDistortionFactor(homeTeam);
-            const awayDistortion = this.getDistortionFactor(awayTeam);
             let reason = `${similarMatches.length} meccs a(z) "${currentCluster}" klaszterből. Kimenetel: H(${outcomes.homeWin})-D(${outcomes.draw})-V(${outcomes.awayWin}).`;
-            if(homeDistortion.confidenceReduction > 0 || awayDistortion.confidenceReduction > 0) {
-                confidence = 'Alacsony';
-                reason += ` Figyelem: A csapat(ok) torzultak, a tipp bizonytalan.`
-            }
-
+            
             return {
                 prediction, predictedScore,
                 predictedOverUnder15: (overUnder['15'].over / similarMatches.length) >= 0.5 ? 'over' : 'under',
@@ -274,71 +278,47 @@
         },
 
         model_Minta_Elemzo(homeTeam, awayTeam) {
-            const sortedLogs = logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
-            const getTeamForm = (teamName, location = 'total') => {
-                const teamLogs = sortedLogs.filter(l => {
-                    const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
-                    if (location === 'home') return teams[0] === teamName.toLowerCase();
-                    if (location === 'away') return teams[1] === teamName.toLowerCase();
-                    return teams.includes(teamName.toLowerCase());
-                }).slice(0, 5);
-                
-                if (teamLogs.length < 3) return { avgGoalsScored: 1.2, avgGoalsConceded: 1.2, strength: 0.5, hasEnoughData: false };
-                
-                const weights = [1.5, 1.2, 1.0, 0.8, 0.5];
-                let goalsScored = 0, goalsConceded = 0, points = 0, totalWeight = 0;
-                
-                teamLogs.forEach((l, index) => {
-                    const weight = weights[index] || 0.5;
-                    const teams = l.name.split(' - ').map(t => t.trim().toLowerCase());
-                    const isHome = teams[0] === teamName.toLowerCase();
-                    if ((isHome && l.outcome === 'homeWin') || (!isHome && l.outcome === 'awayWin')) points += 3 * weight;
-                    else if (l.outcome === 'draw') points += 1 * weight;
-                    goalsScored += (isHome ? l.homeScore : l.awayScore) * weight;
-                    goalsConceded += (isHome ? l.awayScore : l.homeScore) * weight;
-                    totalWeight += weight;
-                });
-                
-                return {
-                    avgGoalsScored: goalsScored / totalWeight,
-                    avgGoalsConceded: goalsConceded / totalWeight,
-                    strength: points / (totalWeight * 3),
-                    hasEnoughData: true
+             const lastTenLogs = logs.slice(0, 10);
+             if (lastTenLogs.length < 10) {
+                 return {
+                    prediction: 'uncertain', predictedScore: '?-?', predictedOverUnder15: 'uncertain',
+                    predictedOverUnder25: 'uncertain', predictedOverUnder35: 'uncertain',
+                    reason: 'Nincs elég adat (minimum 10 meccs) a sorozatok elemzéséhez.',
+                    pattern: 'Minta Elemző', totalGoals: undefined, confidence: 'Alacsony'
                 };
-            };
+             }
 
-            const homeForm = getTeamForm(homeTeam, 'home');
-            const awayForm = getTeamForm(awayTeam, 'away');
+             const streakCounts = { draw: 0, over25: 0 };
+             lastTenLogs.forEach(l => {
+                if(l.outcome === 'draw') streakCounts.draw++;
+                if((l.homeScore + l.awayScore) >= 2.5) streakCounts.over25++;
+             });
+             
+             const drawProbability = streakCounts.draw / lastTenLogs.length;
+             const over25Probability = streakCounts.over25 / lastTenLogs.length;
+
+             let prediction = 'uncertain';
+             if (drawProbability > 0.5) prediction = 'draw';
+             else if (drawProbability < 0.2) {
+                 // If draws are rare, pick a winner based on a coin flip (since we assume form is irrelevant)
+                 prediction = Math.random() > 0.5 ? 'homeWin' : 'awayWin';
+             } else {
+                 prediction = 'uncertain';
+             }
+             
+             const predictedOverUnder25 = over25Probability > 0.5 ? 'over' : 'under';
+             const predictedOverUnder15 = over25Probability > 0.2 ? 'over' : 'under'; // If there's any chance of over 2.5, it's likely over 1.5
+             const predictedOverUnder35 = over25Probability > 0.7 ? 'over' : 'under';
+
+             const reason = `Globális sorozat elemzés (utolsó 10 meccs). Döntetlen arány: ${(drawProbability*100).toFixed(0)}%. Over 2.5 arány: ${(over25Probability*100).toFixed(0)}%.`;
             
-            const expectedHomeGoals = (homeForm.avgGoalsScored + awayForm.avgGoalsConceded) / 2;
-            const expectedAwayGoals = (awayForm.avgGoalsScored + homeForm.avgGoalsConceded) / 2;
-            const totalGoals = expectedHomeGoals + expectedAwayGoals;
-
-            const homeScore = Math.round(expectedHomeGoals);
-            const awayScore = Math.round(expectedAwayGoals);
-            
-            const prediction = homeScore > awayScore ? 'homeWin' : awayScore > homeScore ? 'awayWin' : 'draw';
-            const predictedScore = `${homeScore}-${awayScore}`;
-
-            const strengthDiff = Math.abs(homeForm.strength - awayForm.strength);
-            let confidence = 'Alacsony';
-            const homeDistortion = this.getDistortionFactor(homeTeam);
-            const awayDistortion = this.getDistortionFactor(awayTeam);
-            if (homeForm.hasEnoughData && awayForm.hasEnoughData) {
-                confidence = strengthDiff > 0.4 ? 'Magas' : strengthDiff > 0.2 ? 'Közepes' : 'Alacsony';
-                if (homeDistortion.confidenceReduction > 0 || awayDistortion.confidenceReduction > 0) confidence = 'Alacsony';
-            }
-
-            return {
-                prediction, predictedScore,
-                predictedOverUnder15: totalGoals >= 1.5 ? 'over' : 'under',
-                predictedOverUnder25: totalGoals >= 2.5 ? 'over' : 'under',
-                predictedOverUnder35: totalGoals >= 3.5 ? 'over' : 'under',
-                reason: `Súlyozott forma. Erősség: H(${homeForm.strength.toFixed(2)})-V(${awayForm.strength.toFixed(2)}). Becsült gólok: H(${expectedHomeGoals.toFixed(2)})-V(${expectedAwayGoals.toFixed(2)}).`,
-                pattern: 'Minta Elemző',
-                totalGoals, confidence
-            };
+             return {
+                prediction, predictedScore: '?-?', 
+                predictedOverUnder15, predictedOverUnder25, predictedOverUnder35,
+                reason, pattern: 'Minta Elemző',
+                totalGoals: 1.5 + (over25Probability * 1.5), // Estimate goal average from streak
+                confidence: 'Közepes'
+             };
         },
 
         model_Gol_Modell(homeTeam, awayTeam, home, draw, away) {
@@ -352,7 +332,7 @@
                 };
             }
             
-            const oddsWeight = oddsResult.confidence === 'Magas' ? 0.7 : oddsResult.confidence === 'Közepes' ? 0.6 : 0.5;
+            const oddsWeight = (oddsResult.over25Ratio > 0.6 || oddsResult.over25Ratio < 0.4) ? 0.8 : 0.5;
             const mintaWeight = 1 - oddsWeight;
 
             const finalGoalExpectation = (oddsResult.avgTotalGoals * oddsWeight) + (mintaResult.totalGoals * mintaWeight);
@@ -380,80 +360,50 @@
             const totalProb = (1/home) + (1/draw) + (1/away);
             const trueProbs = { home: (1/home)/totalProb, draw: (1/draw)/totalProb, away: (1/away)/totalProb };
 
-            const mintaResult = this.model_Minta_Elemzo(homeTeam, awayTeam);
-            if (!mintaResult.totalGoals) {
-                return { ...mintaResult, pattern: 'Super Modell', reason: 'Alacsony szintű modell (minta) nem tudott futni.' };
+            const streakResult = this.model_Minta_Elemzo(homeTeam, awayTeam);
+            const homeDistortion = this.getDistortionFactor(homeTeam);
+            let reason = `1000 szimuláció.`;
+
+            // Self-correction & Streak Modifier
+            const lastThree = predictionsLog.filter(p => p.modelName === 'Super Modell').slice(0, 3);
+            if(lastThree.length === 3 && lastThree.every(p => !p.outcomeCorrect)) {
+                 trueProbs.home *= 0.9; trueProbs.away *= 0.9; trueProbs.draw *= 1.2;
+                 reason += ` Önkorrekció aktív (sok hiba).`
             }
-
-            let homeDistortion = this.getDistortionFactor(homeTeam);
-            let awayDistortion = this.getDistortionFactor(awayTeam);
-
-            let expectedHomeGoals = (mintaResult.totalGoals * trueProbs.home) / (trueProbs.home + trueProbs.away);
-            let expectedAwayGoals = (mintaResult.totalGoals * trueProbs.away) / (trueProbs.home + trueProbs.away);
-
-            const myPastPredictions = predictionsLog.filter(p => p.modelName === 'Super Modell').slice(0, 3);
-            if(myPastPredictions.length === 3) {
-                const currentOdds = {home, draw, away};
-                const allFailedInCluster = myPastPredictions.every(p => {
-                    if (!p.oddsData) return false;
-                    try {
-                        const pastOdds = JSON.parse(p.oddsData);
-                        const dist = Math.sqrt(Math.pow(pastOdds.home - currentOdds.home, 2) + Math.pow(pastOdds.draw - currentOdds.draw, 2));
-                        return !p.outcomeCorrect && dist < 0.3;
-                    } catch(e) { return false; }
-                });
-                if(allFailedInCluster) {
-                    if (trueProbs.home > trueProbs.away) expectedHomeGoals *= 0.85; else expectedAwayGoals *= 0.85;
-                }
-            }
-
 
             const SIMULATIONS = 1000;
             let simOutcomes = { homeWin: 0, draw: 0, awayWin: 0 };
             let simGoals = { over15: 0, over25: 0, over35: 0 };
-            let simScores = {};
-
-            const poissonRandom = (lambda) => {
-                if (lambda <= 0 || isNaN(lambda)) return 0;
-                let l = Math.exp(-lambda); let k = 0; let p = 1;
-                do { k++; p *= Math.random(); } while (p > l);
-                return k - 1;
-            }
-
+            
             for (let i = 0; i < SIMULATIONS; i++) {
-                let homeLambda = expectedHomeGoals * (1 + (Math.random() - 0.5) * (homeDistortion.factor - 1));
-                let awayLambda = expectedAwayGoals * (1 + (Math.random() - 0.5) * (awayDistortion.factor - 1));
+                const rand = Math.random();
+                let outcome;
+                if (rand < trueProbs.home) outcome = 'homeWin';
+                else if (rand < trueProbs.home + trueProbs.draw) outcome = 'draw';
+                else outcome = 'awayWin';
 
-                const homeSimGoals = poissonRandom(homeLambda);
-                const awaySimGoals = poissonRandom(awayLambda);
-                const totalSimGoals = homeSimGoals + awaySimGoals;
-                
-                const scoreKey = `${homeSimGoals}-${awaySimGoals}`;
-                simScores[scoreKey] = (simScores[scoreKey] || 0) + 1;
+                if (outcome === 'homeWin' && Math.random() < (homeDistortion.factor - 1)) outcome = 'draw';
 
-                if (homeSimGoals > awaySimGoals) simOutcomes.homeWin++;
-                else if (awaySimGoals > homeSimGoals) simOutcomes.awayWin++;
-                else simOutcomes.draw++;
-                
+                let totalSimGoals = 1.5 + Math.random() * 2; // Base goals
+                if (streakResult.predictedOverUnder25 === 'over') totalSimGoals += 0.5;
+                if (streakResult.predictedOverUnder25 === 'under') totalSimGoals -= 0.5;
+
                 if (totalSimGoals >= 1.5) simGoals.over15++;
                 if (totalSimGoals >= 2.5) simGoals.over25++;
                 if (totalSimGoals >= 3.5) simGoals.over35++;
+                simOutcomes[outcome]++;
             }
             
-            const predictedScore = Object.keys(simScores).reduce((a, b) => simScores[a] > simScores[b] ? a : b, '0-0');
-            const [homeScore, awayScore] = predictedScore.split('-').map(Number);
-            const prediction = homeScore > awayScore ? 'homeWin' : awayScore > homeScore ? 'awayWin' : 'draw';
-            const totalPredictedGoals = homeScore + awayScore;
-
+            const prediction = Object.keys(simOutcomes).reduce((a, b) => simOutcomes[a] > simOutcomes[b] ? a : b);
             const predictionStrength = simOutcomes[prediction] / SIMULATIONS;
             const confidence = predictionStrength > 0.6 ? 'Magas' : predictionStrength > 0.45 ? 'Közepes' : 'Alacsony';
-            const reason = `1000 szimuláció alapján. Eloszlás: H:${(simOutcomes.homeWin/SIMULATIONS*100).toFixed(0)}%, D:${(simOutcomes.draw/SIMULATIONS*100).toFixed(0)}%, V:${(simOutcomes.awayWin/SIMULATIONS*100).toFixed(0)}%.`;
+            reason += ` Eloszlás: H:${(simOutcomes.homeWin/SIMULATIONS*100).toFixed(0)}%, D:${(simOutcomes.draw/SIMULATIONS*100).toFixed(0)}%, V:${(simOutcomes.awayWin/SIMULATIONS*100).toFixed(0)}%.`;
 
             return {
-                prediction, predictedScore,
-                predictedOverUnder15: totalPredictedGoals >= 1.5 ? 'over' : 'under',
-                predictedOverUnder25: totalPredictedGoals >= 2.5 ? 'over' : 'under',
-                predictedOverUnder35: totalPredictedGoals >= 3.5 ? 'over' : 'under',
+                prediction, predictedScore: '?-?',
+                predictedOverUnder15: (simGoals.over15 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
+                predictedOverUnder25: (simGoals.over25 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
+                predictedOverUnder35: (simGoals.over35 / SIMULATIONS) >= 0.5 ? 'over' : 'under',
                 reason, pattern: 'Super Modell', confidence
             };
         }

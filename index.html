@@ -197,7 +197,7 @@ const AI_MODELS = {
         };
     },
 
-    model_Hybrid_Elemzo(oddsResult, mintaResult) {
+    model_Hybrid_Elemzo(oddsResult, mintaResult, home, draw, away) {
         const models = [oddsResult, mintaResult].filter(m => m.rates);
         if(models.length === 0) {
             return { bestTipText: 'Nem elegendő adat', reason: 'Egyik alapmodell sem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony', topOutcomes: [] };
@@ -223,9 +223,9 @@ const AI_MODELS = {
         }
 
         const potentialTips = [
-            { text: 'Hazai győzelem', probability: weightedRates.homeWin, id: 'h' },
-            { text: 'Döntetlen', probability: weightedRates.draw, id: 'd' },
-            { text: 'Vendég győzelem', probability: weightedRates.awayWin, id: 'a' },
+            { text: 'Hazai győzelem', probability: weightedRates.homeWin, id: 'h', odds: home },
+            { text: 'Döntetlen', probability: weightedRates.draw, id: 'd', odds: draw },
+            { text: 'Vendég győzelem', probability: weightedRates.awayWin, id: 'a', odds: away },
             { text: 'Több mint 1.5 gól', probability: weightedRates.over15, id: 'o15' },
             { text: 'Kevesebb mint 1.5 gól', probability: weightedRates.under15, id: 'u15' },
             { text: 'Több mint 2.5 gól', probability: weightedRates.over25, id: 'o25' },
@@ -234,25 +234,49 @@ const AI_MODELS = {
             { text: 'Mindkét csapat nem szerez gólt', probability: weightedRates.bttsNo, id: 'bttsN' },
         ];
         
-        // --- JAVÍTÁS: A bizonytalan (60% alatti) gól-piacok hátrébb sorolása ---
-        const GOAL_TIP_CERTAINTY_THRESHOLD = 0.60;
+        // --- JAVÍTÁS: Intelligensebb rangsorolás "érték" és kontextus alapján ---
+        const isStrongFavorite = home < 1.4 || away < 1.4;
+
         let rankedTips = potentialTips.map(tip => {
-            let sortScore = tip.probability;
-            // Ha a tipp egy gól-piac (over/under) és a valószínűsége a bizonytalan zónában van, csökkentjük a rangsorolási pontszámát.
-            if ((tip.id.startsWith('o') || tip.id.startsWith('u')) && tip.probability < GOAL_TIP_CERTAINTY_THRESHOLD) {
-                sortScore *= 0.85; // 15% büntetés
+            let valueScore = 0;
+            // 1. Érték számítása 1X2 piacokon
+            if (tip.odds) {
+                valueScore = (tip.probability * tip.odds) - 1;
             }
-            return {...tip, sortScore};
+
+            let finalScore = tip.probability;
+
+            // 2. Érték alapú bónusz: Ha pozitív értéket találunk, növeljük a pontszámot
+            if (valueScore > 0.05) { // 5% feletti értéknél
+                finalScore *= (1 + valueScore * 2); // Duplán súlyozzuk az értéket
+            }
+
+            // 3. "Túl nyilvánvaló" tippek büntetése
+            if (tip.id === 'o15') {
+                finalScore *= 0.8; // Az O1.5 ritkábban lesz a legjobb tipp
+            }
+
+            // 4. Erős favorit melletti O2.5 óvatos kezelése
+            if (isStrongFavorite && tip.id === 'o25' && tip.probability < 0.70) {
+                finalScore *= 0.85; // Büntetés, ha nem extra magas a valószínűség
+            }
+            
+            return {...tip, finalScore, valueScore};
         });
 
-        rankedTips.sort((a, b) => b.sortScore - a.sortScore);
+        rankedTips.sort((a, b) => b.finalScore - a.finalScore);
         const bestTip = rankedTips[0];
         
-        // A top 3 listát az eredeti, büntetés nélküli valószínűségek alapján rendezzük a transzparencia érdekében
         const topOutcomes = potentialTips.sort((a, b) => b.probability - a.probability).slice(0, 3);
         
         const finalConfidence = bestTip.probability > 0.75 ? 'Magas' : bestTip.probability > 0.60 ? 'Közepes' : 'Alacsony';
-        const reason = `Több kimenetel elemzése után a(z) "${bestTip.text}" opciót találta a legvalószínűbbnek a rendszer. A gyenge gól-piaci jelzéseket a modell hátrébb sorolja.`;
+        
+        let reason = `Több kimenetel elemzése után a(z) "${bestTip.text}" opciót találta a legígéretesebbnek. `;
+        if (bestTip.valueScore > 0.05) {
+            reason += `A modell **értéket talált** ebben a fogadásban az oddsok alapján (${(bestTip.valueScore * 100).toFixed(0)}% él). `;
+        } else {
+            reason += `A rendszer a kontextust (pl. erős favorit) és a valószínűségeket is figyelembe vette a legjobb tipp kiválasztásakor.`;
+        }
         
         return {
             bestTipText: bestTip.text, bestTipProbability: bestTip.probability,
@@ -322,7 +346,7 @@ const runAIAnalysis = (activePanel) => {
     setTimeout(() => {
         const oddsResult = AI_MODELS.model_Odds_Elemzo(home, draw, away);
         const mintaResult = AI_MODELS.model_Minta_Elemzo(homeTeam, awayTeam, isVSport);
-        const hybridResult = AI_MODELS.model_Hybrid_Elemzo(oddsResult, mintaResult);
+        const hybridResult = AI_MODELS.model_Hybrid_Elemzo(oddsResult, mintaResult, home, draw, away);
         
         const createCardHTML = (title, result, isHybrid = false) => {
             const confidenceColors = { 'Magas': 'bg-green-600', 'Közepes': 'bg-yellow-500', 'Alacsony': 'bg-red-600' };

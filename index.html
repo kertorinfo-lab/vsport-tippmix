@@ -118,9 +118,6 @@ let analysisTimeout;
 
 // --- AI MODEL "MODULE" ---
 const AI_MODELS = {
-    /**
-     * Odds Elemző: Hasonló oddsokkal rendelkező múltbeli meccseket elemez két lépésben.
-     */
     model_Odds_Elemzo(home, draw, away) {
         const MIN_LOGS_TOTAL = 10;
         if (logs.length < MIN_LOGS_TOTAL) {
@@ -156,7 +153,10 @@ const AI_MODELS = {
 
         const outcomeMap = { homeWin: 'Hazai győzelem', draw: 'Döntetlen', awayWin: 'Vendég győzelem', uncertain: 'Bizonytalan kimenetel' };
         const combinedPredictionText = `${outcomeMap[prediction]} és ${goalPredictionText}`;
-        const confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
+        let confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
+        // JAVÍTÁS: Ha a valószínűség túl alacsony, a konfidencia nem lehet magasabb 'Alacsony'-nál.
+        if (predictionStrength < 0.45) confidence = 'Alacsony';
+
         const reason = `${similarMatches.length} hasonló oddsú meccs alapján a legvalószínűbb kimenetel a ${outcomeMap[prediction].toLowerCase()} (${(predictionStrength * 100).toFixed(0)}%). Ezen meccsek ${(over15Rate * 100).toFixed(0)}%-án született 1.5 gólnál több.`;
         
         return {
@@ -164,7 +164,7 @@ const AI_MODELS = {
             combinedPrediction: combinedPredictionText,
             predictedOverUnder15,
             reason, pattern: 'Odds Elemző', confidence,
-            over15Rate, over25Rate, over35Rate // Hibrid modellhez
+            over15Rate, over25Rate, over35Rate
         };
     },
 
@@ -232,7 +232,7 @@ const AI_MODELS = {
             predictedOverUnder15,
             reason, 
             pattern: 'Minta Elemző', confidence, streakLength,
-            over15Rate, over25Rate, over35Rate // Hibrid modellhez
+            over15Rate, over25Rate, over35Rate
         };
     },
 
@@ -240,11 +240,19 @@ const AI_MODELS = {
         if(oddsResult.prediction === 'uncertain' || mintaResult.prediction === 'uncertain') {
             return { prediction: 'uncertain', combinedPrediction: 'Nem elegendő adat a Hibrid elemzéshez', reason: 'Az egyik vagy mindkét alapmodell nem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony' };
         }
+        
+        // JAVÍTÁS: A Minta elemző nagyobb súlyt kap a kimenetelre, mert a statisztikák alapján abban jobb.
+        const confWeights = { 'Magas': 2.0, 'Közepes': 1.5, 'Alacsony': 1.0 };
+        const modelBaseWeights = { odds: 1.0, minta: 1.3 }; 
 
-        const weights = { 'Magas': 2.0, 'Közepes': 1.5, 'Alacsony': 1.0 };
-        const oddsWeight = weights[oddsResult.confidence] || 1;
-        const mintaWeight = weights[mintaResult.confidence] || 1;
+        const oddsWeight = (confWeights[oddsResult.confidence] || 1) * modelBaseWeights.odds;
+        const mintaWeight = (confWeights[mintaResult.confidence] || 1) * modelBaseWeights.minta;
         const totalWeight = oddsWeight + mintaWeight;
+        
+        // JAVÍTÁS: Ha a modellek erősen ellentmondanak, a hibrid bizonytalan lesz.
+        if (oddsResult.prediction !== mintaResult.prediction && oddsResult.confidence === 'Magas' && mintaResult.confidence === 'Magas') {
+             return { prediction: 'uncertain', combinedPrediction: 'Erős Ellentmondás', reason: 'A két alapmodell túlságosan ellentmondásos tippet adott, ezért a Hibrid modell nem ad ajánlást.', pattern: 'Hibrid Elemző', confidence: 'Alacsony' };
+        }
         
         const scores = { homeWin: 0, draw: 0, awayWin: 0 };
         scores[oddsResult.prediction] += oddsWeight;
@@ -267,7 +275,7 @@ const AI_MODELS = {
             reason = `A modellek eltértek. Odds: ${outcomeMap[oddsResult.prediction]}, Minta: ${outcomeMap[mintaResult.prediction]}. A súlyozott ajánlás: ${outcomeMap[finalPrediction].toLowerCase()}.`;
         }
 
-        const finalConfidence = totalWeight >= 3.5 ? 'Magas' : totalWeight >= 2.5 ? 'Közepes' : 'Alacsony';
+        const finalConfidence = totalWeight >= 3.8 ? 'Magas' : totalWeight >= 2.8 ? 'Közepes' : 'Alacsony';
         
         return {
             prediction: finalPrediction,
@@ -537,12 +545,21 @@ const renderStatistics = () => {
         const outcomeSuccessRate = ((modelStat.outcomeCorrect / modelStat.total) * 100).toFixed(1);
         const ou15SuccessRate = ((modelStat.overUnder15Correct / modelStat.total) * 100).toFixed(1);
         
+        // JAVÍTÁS: A statisztikai kártya új, rendezett felépítése.
         finalHTML += `<div class="bg-slate-50 p-4 rounded-lg border">
             <h3 class="text-lg font-bold text-slate-800">${modelName}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 text-center">
-                <div><p class="text-sm text-slate-500">Kimenetel</p><p class="text-2xl font-bold text-blue-600">${outcomeSuccessRate}%</p><p class="text-sm text-slate-500">(${modelStat.outcomeCorrect} / ${modelStat.total})</p></div>
-                <div><p class="text-sm text-slate-500">Gólok 1.5 +/-</p><p class="text-2xl font-bold text-green-600">${ou15SuccessRate}%</p><p class="text-sm text-slate-500">(${modelStat.overUnder15Correct} / ${modelStat.total})</p></div>
-            </div>
+            <div class="flex flex-col md:flex-row gap-4 mt-3">
+                <div class="flex-1 bg-white p-3 rounded-lg border text-center">
+                    <p class="text-sm font-medium text-slate-500">Kimenetel</p>
+                    <p class="text-3xl font-bold text-blue-600 mt-1">${outcomeSuccessRate}%</p>
+                    <p class="text-xs text-slate-400">(${modelStat.outcomeCorrect} / ${modelStat.total})</p>
+                </div>
+                <div class="flex-1 bg-white p-3 rounded-lg border text-center">
+                    <p class="text-sm font-medium text-slate-500">Gólok 1.5 +/-</p>
+                    <p class="text-3xl font-bold text-green-600 mt-1">${ou15SuccessRate}%</p>
+                    <p class="text-xs text-slate-400">(${modelStat.overUnder15Correct} / ${modelStat.total})</p>
+                </div>
+            </div>
             ${createTableHTML('Kimenetel teljesítmény csapatok szerint', modelStat.teams)}
         </div>`;
     }

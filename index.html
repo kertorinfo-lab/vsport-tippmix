@@ -495,7 +495,7 @@ const addAITab = () => {
                 VSport mód (RNG bias)
             </label>
         </div>
-        <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-center min-h-[580px]"></div>`;
+        <div class="ai-result text-center font-medium pt-2 space-y-1 text-sm flex flex-col justify-start min-h-[580px]"></div>`;
     aiTabsContainer.appendChild(tab);
     aiPanelsContainer.appendChild(panel);
     switchAITab(tabId);
@@ -702,7 +702,7 @@ const downloadFile = (data, filename, type) => {
 
 exportJsonBtn.addEventListener('click', () => {
     const dataStr = JSON.stringify({ logs, predictionsLog }, null, 2);
-    downloadFile('vsport_data.json', 'application/json', dataStr);
+    downloadFile(dataStr, 'vsport_data.json', 'application/json');
     importStatus.textContent = 'JSON adatok exportálva!';
     setTimeout(() => importStatus.textContent = '', 3000);
 });
@@ -717,11 +717,11 @@ exportCsvBtn.addEventListener('click', () => {
 
     if (logs.length > 0) {
         const headers = ['id', 'name', 'home', 'draw', 'away', 'homeScore', 'awayScore', 'outcome', 'timestamp'];
-        downloadFile('vsport_meccsek.csv', 'text/csv;charset=utf-8;', convertToCSV(logs, headers));
+        downloadFile(convertToCSV(logs, headers), 'vsport_meccsek.csv', 'text/csv;charset=utf-8;');
     }
     if (predictionsLog.length > 0) {
         const headers = ['id', 'modelName', 'teams', 'pattern', 'predictedOutcome', 'predictedScore', 'actualScore', 'outcomeCorrect', 'predictedOverUnder15', 'predictedOverUnder25', 'overUnder15Correct', 'overUnder25Correct', 'predictedOverUnder35', 'overUnder35Correct'];
-        downloadFile('vsport_tippek.csv', 'text/csv;charset=utf-8;', convertToCSV(predictionsLog, headers));
+        downloadFile(convertToCSV(predictionsLog, headers), 'vsport_tippek.csv', 'text/csv;charset=utf-8;');
     }
     importStatus.textContent = 'CSV adatok exportálva!';
     setTimeout(() => importStatus.textContent = '', 3000);
@@ -787,3 +787,4 @@ waitingRoomToggleBtn.addEventListener('click', () => {
 
 </body>
 </html>
+

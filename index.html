@@ -154,16 +154,13 @@ const AI_MODELS = {
         const outcomeMap = { homeWin: 'Hazai győzelem', draw: 'Döntetlen', awayWin: 'Vendég győzelem', uncertain: 'Bizonytalan kimenetel' };
         const combinedPredictionText = `${outcomeMap[prediction]} és ${goalPredictionText}`;
         let confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
-        // JAVÍTÁS: Ha a valószínűség túl alacsony, a konfidencia nem lehet magasabb 'Alacsony'-nál.
         if (predictionStrength < 0.45) confidence = 'Alacsony';
 
         const reason = `${similarMatches.length} hasonló oddsú meccs alapján a legvalószínűbb kimenetel a ${outcomeMap[prediction].toLowerCase()} (${(predictionStrength * 100).toFixed(0)}%). Ezen meccsek ${(over15Rate * 100).toFixed(0)}%-án született 1.5 gólnál több.`;
         
         return {
-            prediction,
-            combinedPrediction: combinedPredictionText,
-            predictedOverUnder15,
-            reason, pattern: 'Odds Elemző', confidence,
+            prediction, combinedPrediction: combinedPredictionText, predictedOverUnder15,
+            reason, pattern: 'Odds Elemző', confidence, dataSize: similarMatches.length,
             over15Rate, over25Rate, over35Rate
         };
     },
@@ -181,11 +178,19 @@ const AI_MODELS = {
             const awayLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase())).slice(0,5);
             if (homeLogs.length < 3 || awayLogs.length < 3) return { prediction: 'uncertain', combinedPrediction: 'Nincs elég minta', reason: 'Nincs elég adat a csapat(ok) formájához.', pattern: 'Minta Elemző', confidence: 'Alacsony'};
             
-            const homeGoalAvg = homeLogs.reduce((a, b) => a + b.homeScore, 0) / homeLogs.length;
-            const awayGoalAvg = awayLogs.reduce((a, b) => a + b.awayScore, 0) / awayLogs.length;
-            prediction = homeGoalAvg > awayGoalAvg ? 'homeWin' : awayGoalAvg > homeGoalAvg ? 'awayWin' : 'draw';
+            const getFormPoints = (teamLogs) => teamLogs.reduce((points, log) => {
+                const teamIsHome = log.name.toLowerCase().startsWith(homeTeam.toLowerCase());
+                if ((teamIsHome && log.outcome === 'homeWin') || (!teamIsHome && log.outcome === 'awayWin')) return points + 3;
+                if (log.outcome === 'draw') return points + 1;
+                return points;
+            }, 0);
+
+            const homePoints = getFormPoints(homeLogs);
+            const awayPoints = getFormPoints(awayLogs);
+
+            prediction = homePoints > awayPoints ? 'homeWin' : awayPoints > homePoints ? 'awayWin' : 'draw';
             analyzedMatches = [...homeLogs, ...awayLogs];
-            reason = `A két csapat utolsó 5-5 meccse alapján a forma a ${prediction === 'homeWin' ? 'hazai' : prediction === 'awayWin' ? 'vendég' : 'döntetlen'} felé mutat.`;
+            reason = `A csapatok formája (utolsó 5 meccsük alapján, 3/1/0 pontrendszerrel) a ${prediction === 'homeWin' ? 'hazai' : prediction === 'awayWin' ? 'vendég' : 'döntetlen'} felé mutat (${homePoints} vs ${awayPoints} pont).`;
             confidence = 'Közepes';
         } else {
             analyzedMatches = logs.slice(0, 15);
@@ -227,60 +232,86 @@ const AI_MODELS = {
         const combinedPredictionText = `${outcomeMap[prediction]} és ${goalPredictionText}`;
 
         return {
-            prediction,
-            combinedPrediction: combinedPredictionText,
-            predictedOverUnder15,
-            reason, 
-            pattern: 'Minta Elemző', confidence, streakLength,
+            prediction, combinedPrediction: combinedPredictionText, predictedOverUnder15,
+            reason, pattern: 'Minta Elemző', confidence, streakLength, dataSize: analyzedMatches.length,
             over15Rate, over25Rate, over35Rate
         };
     },
 
-    model_Hybrid_Elemzo(oddsResult, mintaResult) {
-        if(oddsResult.prediction === 'uncertain' || mintaResult.prediction === 'uncertain') {
-            return { prediction: 'uncertain', combinedPrediction: 'Nem elegendő adat a Hibrid elemzéshez', reason: 'Az egyik vagy mindkét alapmodell nem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony' };
-        }
-        
-        // JAVÍTÁS: A Minta elemző nagyobb súlyt kap a kimenetelre, mert a statisztikák alapján abban jobb.
-        const confWeights = { 'Magas': 2.0, 'Közepes': 1.5, 'Alacsony': 1.0 };
-        const modelBaseWeights = { odds: 1.0, minta: 1.3 }; 
+    model_Kozvetlen_Elemzo(homeTeam, awayTeam) {
+        const h2hMatches = logs.filter(l => {
+            const lowerCaseName = l.name.toLowerCase();
+            const team1 = homeTeam.toLowerCase();
+            const team2 = awayTeam.toLowerCase();
+            return (lowerCaseName.includes(team1) && lowerCaseName.includes(team2));
+        });
 
-        const oddsWeight = (confWeights[oddsResult.confidence] || 1) * modelBaseWeights.odds;
-        const mintaWeight = (confWeights[mintaResult.confidence] || 1) * modelBaseWeights.minta;
-        const totalWeight = oddsWeight + mintaWeight;
-        
-        // JAVÍTÁS: Ha a modellek erősen ellentmondanak, a hibrid bizonytalan lesz.
-        if (oddsResult.prediction !== mintaResult.prediction && oddsResult.confidence === 'Magas' && mintaResult.confidence === 'Magas') {
-             return { prediction: 'uncertain', combinedPrediction: 'Erős Ellentmondás', reason: 'A két alapmodell túlságosan ellentmondásos tippet adott, ezért a Hibrid modell nem ad ajánlást.', pattern: 'Hibrid Elemző', confidence: 'Alacsony' };
+        if (h2hMatches.length < 3) {
+            return { prediction: 'uncertain', combinedPrediction: 'Nincs elég H2H adat', reason: `Nincs elég egymás elleni meccs (${h2hMatches.length}) a két csapat között.`, pattern: 'Közvetlen Elemző', confidence: 'N/A' };
+        }
+
+        const outcomes = { homeWin: 0, draw: 0, awayWin: 0 };
+        h2hMatches.forEach(l => { if(l.outcome) outcomes[l.outcome]++; });
+
+        let prediction = Object.keys(outcomes).reduce((a, b) => outcomes[a] > outcomes[b] ? a : b);
+        const predictionStrength = outcomes[prediction] / h2hMatches.length;
+
+        const over15Rate = h2hMatches.filter(l => (l.homeScore + l.awayScore) >= 1.5).length / h2hMatches.length;
+        const over25Rate = h2hMatches.filter(l => (l.homeScore + l.awayScore) >= 2.5).length / h2hMatches.length;
+        const over35Rate = h2hMatches.filter(l => (l.homeScore + l.awayScore) >= 3.5).length / h2hMatches.length;
+        const goalPredictionText = over15Rate >= 0.5 ? '1.5 gólnál több' : '1.5 gólnál kevesebb';
+        const predictedOverUnder15 = over15Rate >= 0.5 ? 'over' : 'under';
+        const confidence = predictionStrength > 0.7 ? 'Magas' : 'Közepes';
+
+        const outcomeMap = { homeWin: 'Hazai győzelem', draw: 'Döntetlen', awayWin: 'Vendég győzelem' };
+        const combinedPredictionText = `${outcomeMap[prediction]} és ${goalPredictionText}`;
+        const reason = `${h2hMatches.length} egymás elleni meccs alapján a leggyakoribb kimenetel a ${outcomeMap[prediction].toLowerCase()} volt (${(predictionStrength * 100).toFixed(0)}%).`;
+
+        return {
+            prediction, combinedPrediction: combinedPredictionText, predictedOverUnder15,
+            reason, pattern: 'Közvetlen Elemző', confidence, dataSize: h2hMatches.length,
+            over15Rate, over25Rate, over35Rate
+        };
+    },
+
+    model_Hybrid_Elemzo(oddsResult, mintaResult, h2hResult) {
+        const models = [oddsResult, mintaResult, h2hResult].filter(m => m.prediction !== 'uncertain');
+        if(models.length === 0) {
+            return { prediction: 'uncertain', combinedPrediction: 'Nem elegendő adat a Hibrid elemzéshez', reason: 'Egyik alapmodell sem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony' };
         }
         
+        const confWeights = { 'Magas': 2.0, 'Közepes': 1.5, 'Alacsony': 1.0 };
+        const modelBaseWeights = { 'Odds Elemző': 1.0, 'Minta Elemző': 1.3, 'Közvetlen Elemző': 2.5 }; // H2H gets a huge bonus
+
+        let totalWeight = 0;
         const scores = { homeWin: 0, draw: 0, awayWin: 0 };
-        scores[oddsResult.prediction] += oddsWeight;
-        scores[mintaResult.prediction] += mintaWeight;
+        let weightedRates = { over15: 0, over25: 0, over35: 0 };
+
+        models.forEach(model => {
+            const weight = (confWeights[model.confidence] || 1) * (modelBaseWeights[model.pattern] || 1);
+            scores[model.prediction] += weight;
+            weightedRates.over15 += (model.over15Rate || 0) * weight;
+            weightedRates.over25 += (model.over25Rate || 0) * weight;
+            weightedRates.over35 += (model.over35Rate || 0) * weight;
+            totalWeight += weight;
+        });
+        
         const finalPrediction = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
 
-        const weightedOver15Rate = ((oddsResult.over15Rate || 0) * oddsWeight + (mintaResult.over15Rate || 0) * mintaWeight) / totalWeight;
-        const weightedOver25Rate = ((oddsResult.over25Rate || 0) * oddsWeight + (mintaResult.over25Rate || 0) * mintaWeight) / totalWeight;
-        const weightedOver35Rate = ((oddsResult.over35Rate || 0) * oddsWeight + (mintaResult.over35Rate || 0) * mintaWeight) / totalWeight;
+        const weightedOver15Rate = weightedRates.over15 / totalWeight;
+        const weightedOver25Rate = weightedRates.over25 / totalWeight;
+        const weightedOver35Rate = weightedRates.over35 / totalWeight;
         const finalGoalPrediction = weightedOver15Rate >= 0.5 ? 'over' : 'under';
         const goalPredictionText = finalGoalPrediction === 'over' ? '1.5 gólnál több' : '1.5 gólnál kevesebb';
         
         const outcomeMap = { homeWin: 'Hazai győzelem', draw: 'Döntetlen', awayWin: 'Vendég győzelem' };
         const combinedPredictionText = `${outcomeMap[finalPrediction]} és ${goalPredictionText}`;
         
-        let reason = '';
-        if (oddsResult.prediction === mintaResult.prediction) {
-            reason = 'Mindkét modell egyetértett a meccs kimenetelében.';
-        } else {
-            reason = `A modellek eltértek. Odds: ${outcomeMap[oddsResult.prediction]}, Minta: ${outcomeMap[mintaResult.prediction]}. A súlyozott ajánlás: ${outcomeMap[finalPrediction].toLowerCase()}.`;
-        }
-
-        const finalConfidence = totalWeight >= 3.8 ? 'Magas' : totalWeight >= 2.8 ? 'Közepes' : 'Alacsony';
+        const reason = `Az elérhető modellek (${models.map(m => m.pattern).join(', ')}) súlyozott elemzése alapján a legvalószínűbb kimenetel a ${outcomeMap[finalPrediction].toLowerCase()}.`;
+        const finalConfidence = totalWeight > 5 ? 'Magas' : totalWeight > 3.5 ? 'Közepes' : 'Alacsony';
         
         return {
-            prediction: finalPrediction,
-            combinedPrediction: combinedPredictionText,
-            predictedOverUnder15: finalGoalPrediction,
+            prediction: finalPrediction, combinedPrediction: combinedPredictionText, predictedOverUnder15: finalGoalPrediction,
             reason, pattern: 'Hibrid Elemző', confidence: finalConfidence,
             weightedOver15Rate, weightedOver25Rate, weightedOver35Rate
         };
@@ -348,7 +379,8 @@ const runAIAnalysis = (activePanel) => {
     setTimeout(() => {
         const oddsResult = AI_MODELS.model_Odds_Elemzo(home, draw, away);
         const mintaResult = AI_MODELS.model_Minta_Elemzo(homeTeam, awayTeam, isVSport);
-        const hybridResult = AI_MODELS.model_Hybrid_Elemzo(oddsResult, mintaResult);
+        const h2hResult = AI_MODELS.model_Kozvetlen_Elemzo(homeTeam, awayTeam);
+        const hybridResult = AI_MODELS.model_Hybrid_Elemzo(oddsResult, mintaResult, h2hResult);
         
         let alertHTML = '';
         if (isVSport && mintaResult.streakLength > 3) {
@@ -359,6 +391,7 @@ const runAIAnalysis = (activePanel) => {
         }
 
         const createCardHTML = (title, result, isHybrid = false) => {
+            if (result.confidence === 'N/A') return ''; // Don't render H2H card if not applicable
             const confidenceColors = { 'Magas': 'bg-green-600', 'Közepes': 'bg-yellow-500', 'Alacsony': 'bg-red-600' };
             const cardClass = isHybrid ? 'hybrid-card' : 'bg-gray-700';
             const titleColor = isHybrid ? 'text-purple-300' : 'text-teal-400';
@@ -411,6 +444,7 @@ const runAIAnalysis = (activePanel) => {
         aiResultDiv.innerHTML = `<div class="space-y-3">
             ${alertHTML}
             ${createCardHTML('⭐ Hibrid Ajánlás', hybridResult, true)}
+            ${createCardHTML('Közvetlen Elemző (H2H)', h2hResult)}
             ${createCardHTML('Odds Elemző', oddsResult)}
             ${createCardHTML('Minta Elemző', mintaResult)}
             ${saveResultHTML}
@@ -418,7 +452,7 @@ const runAIAnalysis = (activePanel) => {
 
         const saveBtn = activePanel.querySelector('.save-result-btn');
         const oddsData = JSON.stringify({home, draw, away});
-        const allResults = { odds: oddsResult, minta: mintaResult, hybrid: hybridResult };
+        const allResults = { odds: oddsResult, minta: mintaResult, h2h: h2hResult, hybrid: hybridResult };
         for (const [prefix, result] of Object.entries(allResults)) {
             Object.assign(saveBtn.dataset, {
                 [`${prefix}Prediction`]: result.prediction,
@@ -509,7 +543,7 @@ const resetStatistics = () => {
 };
 
 const renderStatistics = () => {
-    const modelsToTrack = ['Hibrid Elemző', 'Odds Elemző', 'Minta Elemző'];
+    const modelsToTrack = ['Hibrid Elemző', 'Közvetlen Elemző', 'Odds Elemző', 'Minta Elemző'];
     const stats = {};
     modelsToTrack.forEach(name => {
         stats[name] = { total: 0, outcomeCorrect: 0, overUnder15Correct: 0, teams: {} };
@@ -539,13 +573,12 @@ const renderStatistics = () => {
     };
 
     let finalHTML = '';
-    for (const modelName in stats) {
+    for (const modelName of modelsToTrack) {
         const modelStat = stats[modelName];
         if (modelStat.total === 0) continue;
         const outcomeSuccessRate = ((modelStat.outcomeCorrect / modelStat.total) * 100).toFixed(1);
         const ou15SuccessRate = ((modelStat.overUnder15Correct / modelStat.total) * 100).toFixed(1);
         
-        // JAVÍTÁS: A statisztikai kártya új, rendezett felépítése.
         finalHTML += `<div class="bg-slate-50 p-4 rounded-lg border">
             <h3 class="text-lg font-bold text-slate-800">${modelName}</h3>
             <div class="flex flex-col md:flex-row gap-4 mt-3">
@@ -600,11 +633,11 @@ aiPanelsContainer.addEventListener('click', e => {
         logs.unshift(newLog);
         renderLogs();
         
-        ['odds', 'minta', 'hybrid'].forEach(prefix => {
-            const modelNameMap = { odds: 'Odds Elemző', minta: 'Minta Elemző', hybrid: 'Hibrid Elemző' };
+        ['odds', 'minta', 'h2h', 'hybrid'].forEach(prefix => {
+            const modelNameMap = { odds: 'Odds Elemző', minta: 'Minta Elemző', h2h: 'Közvetlen Elemző', hybrid: 'Hibrid Elemző' };
             const predOU15 = btn.dataset[`${prefix}PredictedOverUnder15`];
 
-            if (!predOU15) return;
+            if (!predOU15 || !btn.dataset[`${prefix}Prediction`] || btn.dataset[`${prefix}Prediction`] === 'undefined') return;
 
             predictionsLog.unshift({
                 id: Date.now() + Math.random(),

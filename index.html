@@ -345,7 +345,7 @@ const runAIAnalysis = (activePanel) => {
         };
         
         const saveResultHTML = `
-            <div class="p-3 bg-gray-600 rounded-lg text-left">
+            <div class="p-3 bg-gray-600 rounded-lg text-left mt-3">
                 <h4 class="font-bold text-gray-300 text-sm uppercase tracking-wider mb-2">Eredmény rögzítése</h4>
                 <div class="flex items-center space-x-2">
                     <input type="number" placeholder="H" class="actual-home-score w-16 px-2 py-1 text-sm rounded-lg bg-gray-800 border border-gray-500 focus:ring-2 focus:ring-teal-400 text-white text-center">
@@ -358,6 +358,7 @@ const runAIAnalysis = (activePanel) => {
 
         aiResultDiv.innerHTML = `<div class="space-y-3">
             ${createCardHTML('⭐ Hibrid Ajánlás', hybridResult, true)}
+            ${saveResultHTML}
         </div>`;
 
         const saveBtn = activePanel.querySelector('.save-result-btn');
@@ -449,22 +450,23 @@ const resetStatistics = () => {
 };
 
 const renderStatistics = () => {
-    const modelsToTrack = ['Hibrid Elemző'];
-    const stats = { 'Hibrid Elemző': { total: 0, correct: 0 }};
+    const modelName = 'Hibrid Elemző';
+    const modelStat = { total: 0, correct: 0 };
 
     predictionsLog.forEach(p => {
-        stats['Hibrid Elemző'].total++;
-        if (p.correct) stats['Hibrid Elemző'].correct++;
+        modelStat.total++;
+        if (p.correct) modelStat.correct++;
     });
+    
+    if (modelStat.total === 0) {
+        statsContent.innerHTML = `<p class="text-center text-slate-500 py-8">Nincsenek rögzített AI tippek a statisztikához.</p>`;
+        return;
+    }
 
-    let finalHTML = '';
-    for (const modelName of modelsToTrack) {
-        const modelStat = stats[modelName];
-        if (modelStat.total === 0) continue;
-        const successRate = ((modelStat.correct / modelStat.total) * 100).toFixed(1);
-        
-        finalHTML += `<div class="bg-slate-50 p-4 rounded-lg border">
-            <h3 class="text-lg font-bold text-slate-800">${modelName}</h3>
+    const successRate = ((modelStat.correct / modelStat.total) * 100).toFixed(1);
+    
+    const summaryHTML = `<div class="bg-slate-50 p-4 rounded-lg border">
+            <h3 class="text-lg font-bold text-slate-800">${modelName} Összesített</h3>
             <div class="flex flex-col md:flex-row gap-4 mt-3">
                 <div class="flex-1 bg-white p-3 rounded-lg border text-center">
                     <p class="text-sm font-medium text-slate-500">Találati Arány</p>
@@ -473,9 +475,40 @@ const renderStatistics = () => {
                 </div>
             </div>
         </div>`;
-    }
-    statsContent.innerHTML = finalHTML || `<p class="text-center text-slate-500 py-8">Nincsenek rögzített AI tippek a statisztikához.</p>`;
+
+    const checkSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+    const xSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 text-red-500"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+
+    const detailsHTML = `
+        <div class="mt-4">
+            <h4 class="font-semibold text-slate-600 mb-2">Részletes Eredmények</h4>
+            <div class="space-y-2">
+                ${[...predictionsLog].reverse().map(p => {
+                    const isCorrect = p.correct;
+                    const bgColor = isCorrect ? 'bg-green-50' : 'bg-red-50';
+                    const borderColor = isCorrect ? 'border-green-200' : 'border-red-200';
+                    return `
+                        <div class="p-3 rounded-lg border ${bgColor} ${borderColor} flex items-center justify-between gap-4">
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${p.teams}</p>
+                                <p class="text-xs text-slate-600 mt-1">
+                                    <span class="font-semibold">Tipp:</span> ${p.predicted} | 
+                                    <span class="font-semibold">Eredmény:</span> ${p.actualScore}
+                                </p>
+                            </div>
+                            <div class="shrink-0">
+                                ${isCorrect ? checkSVG : xSVG}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    statsContent.innerHTML = summaryHTML + detailsHTML;
 };
+
 
 // --- INITIALIZATION AND EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {

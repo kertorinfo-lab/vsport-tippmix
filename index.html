@@ -118,9 +118,6 @@ let analysisTimeout;
 
 // --- AI MODEL "MODULE" ---
 const AI_MODELS = {
-    /**
-     * Elemz egy adathalmazt (meccseket) és visszaadja a különböző kimenetelek arányait.
-     */
     calculateRates(matches) {
         if (!matches || matches.length === 0) return {};
         const total = matches.length;
@@ -140,75 +137,52 @@ const AI_MODELS = {
 
     model_Odds_Elemzo(home, draw, away) {
         const MIN_LOGS_TOTAL = 10;
-        if (logs.length < MIN_LOGS_TOTAL) {
-            return { prediction: 'uncertain', bestTipText: 'Nincs elég adat', reason: `Minimum ${MIN_LOGS_TOTAL} meccs szükséges az elemzéshez.`, pattern: 'Odds Elemző', confidence: 'Alacsony' };
-        }
+        if (logs.length < MIN_LOGS_TOTAL) return { pattern: 'Odds Elemző', confidence: 'Alacsony', reason: `Minimum ${MIN_LOGS_TOTAL} meccs szükséges.` };
         
-        const getCluster = (h, d, a) => {
-            const h_c = h < 1.8 ? 'fav' : h < 2.5 ? 'mid' : 'dog';
-            const d_c = d < 3.3 ? 'low' : d < 4.0 ? 'mid' : 'high';
-            return `${h_c}-${d_c}`;
-        };
+        const getCluster = (h, d, a) => `${h<1.8?'fav':h<2.5?'mid':'dog'}-${d<3.3?'low':d<4.0?'mid':'high'}`;
         const currentCluster = getCluster(home, draw, away);
         const similarMatches = logs.filter(l => getCluster(l.home, l.draw, l.away) === currentCluster);
 
-        if (similarMatches.length < 5) {
-            return { prediction: 'uncertain', bestTipText: 'Nincs elég minta', reason: `Nincs elég adat ebben az odds-klaszterben (${currentCluster}). Csak ${similarMatches.length} meccs található.`, pattern: 'Odds Elemző', confidence: 'Alacsony' };
-        }
+        if (similarMatches.length < 5) return { pattern: 'Odds Elemző', confidence: 'Alacsony', reason: `Nincs elég minta a(z) ${currentCluster} klaszterben.` };
         
         const rates = this.calculateRates(similarMatches);
-        const prediction = Object.keys(rates).filter(k => ['homeWin', 'draw', 'awayWin'].includes(k)).reduce((a, b) => rates[a] > rates[b] ? a : b);
+        const prediction = Object.keys(rates).filter(k=>['homeWin','draw','awayWin'].includes(k)).reduce((a, b) => rates[a] > rates[b] ? a : b);
         const predictionStrength = rates[prediction];
-        let confidence = predictionStrength > 0.65 ? 'Magas' : predictionStrength > 0.50 ? 'Közepes' : 'Alacsony';
-        if (predictionStrength < 0.45) confidence = 'Alacsony';
+        let confidence = predictionStrength > 0.6 ? 'Magas' : predictionStrength > 0.45 ? 'Közepes' : 'Alacsony';
 
         const reason = `${similarMatches.length} hasonló oddsú meccs alapján.`;
-        
-        return {
-            prediction, reason, rates, pattern: 'Odds Elemző', confidence, dataSize: similarMatches.length
-        };
+        return { prediction, reason, rates, pattern: 'Odds Elemző', confidence };
     },
 
     model_Minta_Elemzo(homeTeam, awayTeam, isVSport = false) {
-        let analyzedMatches = [];
-        let reason = '';
-        let confidence = 'Alacsony';
-        
+        let analyzedMatches = [], reason = '', confidence = 'Alacsony';
         if (!isVSport) {
-            const sortedLogs = [...logs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            const homeLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase())).slice(0,5);
-            const awayLogs = sortedLogs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase())).slice(0,5);
-            if (homeLogs.length < 3 || awayLogs.length < 3) return { prediction: 'uncertain', bestTipText: 'Nincs elég minta', reason: 'Nincs elég adat a csapat(ok) formájához.', pattern: 'Minta Elemző', confidence: 'Alacsony'};
+            const homeLogs = logs.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase())).slice(-5);
+            const awayLogs = logs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase())).slice(-5);
+            if (homeLogs.length < 3 || awayLogs.length < 3) return { pattern: 'Minta Elemző', confidence: 'Alacsony', reason: 'Nincs elég adat a csapat(ok) formájához.'};
             analyzedMatches = [...homeLogs, ...awayLogs];
-            reason = `A csapatok formája (utolsó 5-5 meccsük) alapján.`;
+            reason = `A csapatok formája (utolsó 5-5 meccs) alapján.`;
             confidence = 'Közepes';
         } else {
-            analyzedMatches = logs.slice(0, 15);
-            if (analyzedMatches.length < 10) return { prediction: 'uncertain', bestTipText: 'Nincs elég adat', reason: 'Minimum 10 meccs szükséges a globális sorozat elemzéséhez.', pattern: 'Minta Elemző', confidence: 'Alacsony' };
-            reason = `Globális VSPORT trendek alapján (utolsó 10 meccs).`;
+            analyzedMatches = logs.slice(-15);
+            if (analyzedMatches.length < 10) return { pattern: 'Minta Elemző', confidence: 'Alacsony', reason: 'Minimum 10 meccs kell a globális sorozathoz.' };
+            reason = `Globális VSPORT trendek (utolsó 10 meccs) alapján.`;
             confidence = 'Közepes';
         }
 
         const rates = this.calculateRates(analyzedMatches);
-        const prediction = Object.keys(rates).filter(k => ['homeWin', 'draw', 'awayWin'].includes(k)).reduce((a, b) => rates[a] > rates[b] ? a : b);
-
-        return {
-            prediction, reason, rates, pattern: 'Minta Elemző', confidence, dataSize: analyzedMatches.length
-        };
+        const prediction = Object.keys(rates).filter(k=>['homeWin','draw','awayWin'].includes(k)).reduce((a,b)=>rates[a]>rates[b]?a:b);
+        return { prediction, reason, rates, pattern: 'Minta Elemző', confidence };
     },
 
     model_Hybrid_Elemzo(oddsResult, mintaResult, home, draw, away) {
         const models = [oddsResult, mintaResult].filter(m => m.rates);
-        if(models.length === 0) {
-            return { bestTipText: 'Nem elegendő adat', reason: 'Egyik alapmodell sem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony', topOutcomes: [] };
-        }
+        if(models.length === 0) return { bestTipText: 'Nem elegendő adat', reason: 'Egyik alapmodell sem tudott érvényes tippet adni.', pattern: 'Hibrid Elemző', confidence: 'Alacsony', topOutcomes: [] };
         
         const confWeights = { 'Magas': 2.0, 'Közepes': 1.5, 'Alacsony': 1.0 };
         const modelBaseWeights = { 'Odds Elemző': 1.0, 'Minta Elemző': 1.2 };
 
-        let totalWeight = 0;
-        let weightedRates = {};
-
+        let totalWeight = 0, weightedRates = {};
         models.forEach(model => {
             const weight = (confWeights[model.confidence] || 1) * (modelBaseWeights[model.pattern] || 1);
             for (const key in model.rates) {
@@ -217,10 +191,7 @@ const AI_MODELS = {
             }
             totalWeight += weight;
         });
-
-        for (const key in weightedRates) {
-            weightedRates[key] /= totalWeight;
-        }
+        for (const key in weightedRates) weightedRates[key] /= totalWeight;
 
         const potentialTips = [
             { text: 'Hazai győzelem', probability: weightedRates.homeWin, id: 'h', odds: home },
@@ -234,54 +205,30 @@ const AI_MODELS = {
             { text: 'Mindkét csapat nem szerez gólt', probability: weightedRates.bttsNo, id: 'bttsN' },
         ];
         
-        // --- JAVÍTÁS: Intelligensebb rangsorolás "érték" és kontextus alapján ---
-        const isStrongFavorite = home < 1.4 || away < 1.4;
+        const isStrongFavorite = home < 1.6 || away < 1.6;
 
         let rankedTips = potentialTips.map(tip => {
-            let valueScore = 0;
-            // 1. Érték számítása 1X2 piacokon
-            if (tip.odds) {
-                valueScore = (tip.probability * tip.odds) - 1;
-            }
-
+            let valueScore = (tip.odds) ? (tip.probability * tip.odds) - 1 : 0;
             let finalScore = tip.probability;
 
-            // 2. Érték alapú bónusz: Ha pozitív értéket találunk, növeljük a pontszámot
-            if (valueScore > 0.05) { // 5% feletti értéknél
-                finalScore *= (1 + valueScore * 2); // Duplán súlyozzuk az értéket
-            }
-
-            // 3. "Túl nyilvánvaló" tippek büntetése
-            if (tip.id === 'o15') {
-                finalScore *= 0.8; // Az O1.5 ritkábban lesz a legjobb tipp
-            }
-
-            // 4. Erős favorit melletti O2.5 óvatos kezelése
-            if (isStrongFavorite && tip.id === 'o25' && tip.probability < 0.70) {
-                finalScore *= 0.85; // Büntetés, ha nem extra magas a valószínűség
-            }
+            if (valueScore > 0.05) finalScore *= (1 + valueScore * 2); 
+            if (tip.id === 'o15') finalScore *= 0.8; 
+            if (isStrongFavorite && tip.id === 'o25' && tip.probability < 0.70) finalScore *= 0.85;
+            if ((tip.id === 'h' || tip.id === 'a') && tip.odds < 1.60) finalScore *= 0.9;
             
             return {...tip, finalScore, valueScore};
         });
 
         rankedTips.sort((a, b) => b.finalScore - a.finalScore);
         const bestTip = rankedTips[0];
-        
         const topOutcomes = potentialTips.sort((a, b) => b.probability - a.probability).slice(0, 3);
-        
         const finalConfidence = bestTip.probability > 0.75 ? 'Magas' : bestTip.probability > 0.60 ? 'Közepes' : 'Alacsony';
         
-        let reason = `Több kimenetel elemzése után a(z) "${bestTip.text}" opciót találta a legígéretesebbnek. `;
-        if (bestTip.valueScore > 0.05) {
-            reason += `A modell **értéket talált** ebben a fogadásban az oddsok alapján (${(bestTip.valueScore * 100).toFixed(0)}% él). `;
-        } else {
-            reason += `A rendszer a kontextust (pl. erős favorit) és a valószínűségeket is figyelembe vette a legjobb tipp kiválasztásakor.`;
-        }
+        let reason = `A rendszer a(z) "${bestTip.text}" opciót találta a legígéretesebbnek. `;
+        if (bestTip.valueScore > 0.05) reason += `**Értéket talált** a fogadásban (${(bestTip.valueScore * 100).toFixed(0)}% él). `;
+        else reason += `A kontextust (pl. alacsony oddsos favoritok) is figyelembe vette.`;
         
-        return {
-            bestTipText: bestTip.text, bestTipProbability: bestTip.probability,
-            reason, pattern: 'Hibrid Elemző', confidence: finalConfidence, topOutcomes
-        };
+        return { bestTipText: bestTip.text, reason, pattern: 'Hibrid Elemző', confidence: finalConfidence, topOutcomes };
     }
 };
 
@@ -403,7 +350,8 @@ const runAIAnalysis = (activePanel) => {
             homeTeam, 
             awayTeam, 
             oddsData: JSON.stringify({home, draw, away}),
-            predictionText: hybridResult.bestTipText
+            predictionText: hybridResult.bestTipText,
+            topPredictions: JSON.stringify(hybridResult.topOutcomes || [])
         });
     }, 250);
 };
@@ -488,39 +436,68 @@ const resetStatistics = () => {
 
 const renderStatistics = () => {
     const modelName = 'Hibrid Elemző';
-    const modelStat = { total: 0, correct: 0 };
+    const mainTipsStat = { total: 0, correct: 0 };
+    const marketStats = {};
 
     predictionsLog.forEach(p => {
-        modelStat.total++;
-        if (p.correct) modelStat.correct++;
+        // Összesített statisztika a fő tippekről
+        if (p.isMainTip) {
+            mainTipsStat.total++;
+            if (p.correct) mainTipsStat.correct++;
+        }
+        
+        // Piaconkénti statisztika
+        const market = p.predicted;
+        if (!marketStats[market]) {
+            marketStats[market] = { total: 0, correct: 0 };
+        }
+        marketStats[market].total++;
+        if (p.correct) marketStats[market].correct++;
     });
     
-    if (modelStat.total === 0) {
+    if (mainTipsStat.total === 0) {
         statsContent.innerHTML = `<p class="text-center text-slate-500 py-8">Nincsenek rögzített AI tippek a statisztikához.</p>`;
         return;
     }
 
-    const successRate = ((modelStat.correct / modelStat.total) * 100).toFixed(1);
+    const successRate = ((mainTipsStat.correct / mainTipsStat.total) * 100).toFixed(1);
     
     const summaryHTML = `<div class="bg-slate-50 p-4 rounded-lg border">
-            <h3 class="text-lg font-bold text-slate-800">${modelName} Összesített</h3>
+            <h3 class="text-lg font-bold text-slate-800">${modelName} - Fő Tippek</h3>
             <div class="flex flex-col md:flex-row gap-4 mt-3">
                 <div class="flex-1 bg-white p-3 rounded-lg border text-center">
                     <p class="text-sm font-medium text-slate-500">Találati Arány</p>
                     <p class="text-3xl font-bold text-purple-600 mt-1">${successRate}%</p>
-                    <p class="text-xs text-slate-400">(${modelStat.correct} / ${modelStat.total})</p>
+                    <p class="text-xs text-slate-400">(${mainTipsStat.correct} / ${mainTipsStat.total})</p>
                 </div>
             </div>
         </div>`;
+
+    const marketStatsHTML = `
+        <div class="mt-4">
+             <h4 class="font-semibold text-slate-600 mb-2">Teljesítmény Piaconként (Minden javasolt tipp)</h4>
+             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                ${Object.entries(marketStats).sort(([,a],[,b]) => b.total - a.total).map(([market, stats]) => `
+                    <div class="bg-white p-3 rounded-lg border">
+                        <p class="font-bold text-slate-700 text-sm">${market}</p>
+                        <div class="flex items-baseline justify-between mt-2">
+                            <p class="text-2xl font-bold text-slate-800">${((stats.correct / stats.total) * 100).toFixed(0)}%</p>
+                            <p class="text-xs text-slate-400">(${stats.correct}/${stats.total})</p>
+                        </div>
+                    </div>
+                `).join('')}
+             </div>
+        </div>
+    `;
 
     const checkSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
     const xSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-7 h-7 text-red-500"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
 
     const detailsHTML = `
         <div class="mt-4">
-            <h4 class="font-semibold text-slate-600 mb-2">Részletes Eredmények</h4>
+            <h4 class="font-semibold text-slate-600 mb-2">Részletes Eredmények (Fő Tippek)</h4>
             <div class="space-y-2">
-                ${[...predictionsLog].reverse().map(p => {
+                ${[...predictionsLog].filter(p => p.isMainTip).reverse().map(p => {
                     const isCorrect = p.correct;
                     const bgColor = isCorrect ? 'bg-green-50' : 'bg-red-50';
                     const borderColor = isCorrect ? 'border-green-200' : 'border-red-200';
@@ -543,7 +520,7 @@ const renderStatistics = () => {
         </div>
     `;
 
-    statsContent.innerHTML = summaryHTML + detailsHTML;
+    statsContent.innerHTML = summaryHTML + marketStatsHTML + detailsHTML;
 };
 
 
@@ -599,18 +576,21 @@ aiPanelsContainer.addEventListener('click', e => {
         logs.unshift(newLog);
         renderLogs();
         
-        const predictionText = btn.dataset.predictionText;
-        if (predictionText) {
+        const mainPredictionText = btn.dataset.predictionText;
+        const topPredictions = JSON.parse(btn.dataset.topPredictions || '[]');
+
+        topPredictions.forEach(prediction => {
             predictionsLog.unshift({
                 id: Date.now() + Math.random(),
                 modelName: 'Hibrid Elemző',
                 teams: `${btn.dataset.homeTeam} - ${btn.dataset.awayTeam}`,
-                predicted: predictionText,
+                predicted: prediction.text,
+                isMainTip: prediction.text === mainPredictionText,
                 actualScore: `${actualHomeScore}-${actualAwayScore}`,
-                correct: checkPrediction(predictionText, actualHomeScore, actualAwayScore),
+                correct: checkPrediction(prediction.text, actualHomeScore, actualAwayScore),
                 oddsData: btn.dataset.oddsData,
             });
-        }
+        });
         
         saveToLocalStorage();
         feedbackDiv.innerHTML = `<span class="font-bold text-green-500">Eredmény sikeresen rögzítve!</span>`;
@@ -670,7 +650,7 @@ exportCsvBtn.addEventListener('click', () => {
         downloadFile(convertToCSV(logs, headers), 'vsport_meccsek.csv', 'text/csv;charset=utf-8;');
     }
     if (predictionsLog.length > 0) {
-        const headers = ['id', 'modelName', 'teams', 'predicted', 'actualScore', 'correct'];
+        const headers = ['id', 'modelName', 'teams', 'predicted', 'actualScore', 'correct', 'isMainTip'];
         downloadFile(convertToCSV(predictionsLog, headers), 'vsport_tippek.csv', 'text/csv;charset=utf-8;');
     }
     importStatus.textContent = 'CSV adatok exportálva!';

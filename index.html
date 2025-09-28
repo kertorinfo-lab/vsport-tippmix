@@ -233,13 +233,26 @@ const AI_MODELS = {
             { text: 'Mindkét csapat szerez gólt', probability: weightedRates.bttsYes, id: 'bttsY' },
             { text: 'Mindkét csapat nem szerez gólt', probability: weightedRates.bttsNo, id: 'bttsN' },
         ];
+        
+        // --- JAVÍTÁS: A bizonytalan (60% alatti) gól-piacok hátrébb sorolása ---
+        const GOAL_TIP_CERTAINTY_THRESHOLD = 0.60;
+        let rankedTips = potentialTips.map(tip => {
+            let sortScore = tip.probability;
+            // Ha a tipp egy gól-piac (over/under) és a valószínűsége a bizonytalan zónában van, csökkentjük a rangsorolási pontszámát.
+            if ((tip.id.startsWith('o') || tip.id.startsWith('u')) && tip.probability < GOAL_TIP_CERTAINTY_THRESHOLD) {
+                sortScore *= 0.85; // 15% büntetés
+            }
+            return {...tip, sortScore};
+        });
 
-        potentialTips.sort((a, b) => b.probability - a.probability);
-        const bestTip = potentialTips[0];
-        const topOutcomes = potentialTips.slice(0, 3);
+        rankedTips.sort((a, b) => b.sortScore - a.sortScore);
+        const bestTip = rankedTips[0];
+        
+        // A top 3 listát az eredeti, büntetés nélküli valószínűségek alapján rendezzük a transzparencia érdekében
+        const topOutcomes = potentialTips.sort((a, b) => b.probability - a.probability).slice(0, 3);
         
         const finalConfidence = bestTip.probability > 0.75 ? 'Magas' : bestTip.probability > 0.60 ? 'Közepes' : 'Alacsony';
-        const reason = `Több kimenetel elemzése után a(z) "${bestTip.text}" opciót találta a legvalószínűbbnek a rendszer.`;
+        const reason = `Több kimenetel elemzése után a(z) "${bestTip.text}" opciót találta a legvalószínűbbnek a rendszer. A gyenge gól-piaci jelzéseket a modell hátrébb sorolja.`;
         
         return {
             bestTipText: bestTip.text, bestTipProbability: bestTip.probability,

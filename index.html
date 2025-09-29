@@ -4,17 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VSPORT Elemző Motor - ADMIN</title>
+    <title>VSport Elemző Motor - ADMIN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-        .card-hover:hover { transform: scale(1.01); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); }
-        ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-track { background: #f1f5f9; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; } ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .outcome-homeWin { background-color: #e8f5f9; border-left: 4px solid #4caf50; }
-        .outcome-awayWin { background-color: #ffebee; border-left: 4px solid #f44336; }
-        .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
         .loader { width: 24px; height: 24px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         .poisson-card { border: 2px solid #38bdf8; background-color: #0c3355; }
         input[type=range]::-webkit-slider-thumb { background-color: #38bdf8; }
@@ -30,14 +25,6 @@
              <div class="text-left">
                   <h1 class="text-2xl md:text-3xl font-bold text-slate-900">VSport Elemző Motor</h1>
                   <p id="app-welcome-user" class="text-slate-500 mt-1">Bejelentkezve: <span class="font-bold text-purple-600">krisztian</span></p>
-             </div>
-             <div class="text-left sm:text-right space-y-2 w-full sm:w-auto">
-                  <div class="flex items-center justify-start sm:justify-end space-x-2 flex-wrap gap-2">
-                       <button id="export-json-btn" class="bg-gray-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-gray-700 flex items-center space-x-2 text-sm"><span>Export JSON</span></button>
-                       <button id="import-data-btn" class="bg-gray-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-gray-700 flex items-center space-x-2 text-sm"><span>Import</span></button>
-                       <input type="file" id="import-file-input" class="hidden" accept=".json">
-                  </div>
-                   <p id="import-status" class="text-xs text-gray-500 h-4 mt-2"></p>
              </div>
         </div>
 
@@ -59,7 +46,7 @@
                 <!-- Model Tuning -->
                 <div class="mt-4 pt-3 border-t border-gray-600">
                     <h3 class="text-md font-semibold text-center text-sky-300 mb-3">Modell Finomhangolása</h3>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
                         <!-- Left Side: Sliders -->
                         <div class="space-y-4">
                             <div>
@@ -74,6 +61,10 @@
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
+                             <div>
+                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
+                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
                         </div>
                         <!-- Right Side: Autofit -->
                         <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg">
@@ -87,11 +78,6 @@
                  <div id="ai-result" class="pt-4 min-h-[400px]"></div>
             </div>
         </div>
-
-        <div id="database-section">
-            <h2 class="text-xl font-bold text-slate-800 mb-4">Meccs Adatbázis</h2>
-            <div id="log-list" class="space-y-3"></div>
-        </div>
     </main>
 
 <script>
@@ -104,19 +90,24 @@ const awayOddInput = document.getElementById('away-odd-input');
 const rhoSlider = document.getElementById('rho-slider');
 const lambda3Slider = document.getElementById('lambda3-slider');
 const mixtureSlider = document.getElementById('mixture-slider');
+const marginSlider = document.getElementById('margin-slider');
 const rhoValue = document.getElementById('rho-value');
 const lambda3Value = document.getElementById('lambda3-value');
 const mixtureValue = document.getElementById('mixture-value');
+const marginValue = document.getElementById('margin-value');
 const aiResultDiv = document.getElementById('ai-result');
-const logListDiv = document.getElementById('log-list');
-const exportJsonBtn = document.getElementById('export-json-btn');
-const importDataBtn = document.getElementById('import-data-btn');
-const importFileInput = document.getElementById('import-file-input');
-const importStatus = document.getElementById('import-status');
 const autofitBtn = document.getElementById('autofit-btn');
 const autofitStatus = document.getElementById('autofit-status');
 
 // --- APP STATE ---
+// Sample data to make the tool work out of the box
+const initialLogs = [
+    { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 2, awayScore: 0, outcome: "homeWin", timestamp: new Date().toISOString() },
+    { id: 2, name: "Liverpool - Tottenham", home: 1.80, draw: 3.80, away: 4.00, homeScore: 1, awayScore: 1, outcome: "draw", timestamp: new Date().toISOString() },
+    { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 2.20, draw: 3.50, away: 3.20, homeScore: 2, awayScore: 2, outcome: "draw", timestamp: new Date().toISOString() },
+    { id: 4, name: "London Ágyúk - Fulham", home: 1.30, draw: 5.50, away: 9.00, homeScore: 3, awayScore: 0, outcome: "homeWin", timestamp: new Date().toISOString() },
+    { id: 5, name: "Crystal Palace - Newcastle", home: 3.00, draw: 3.40, away: 2.30, homeScore: 0, awayScore: 1, outcome: "awayWin", timestamp: new Date().toISOString() },
+];
 let logs = [];
 let analysisTimeout;
 
@@ -143,7 +134,7 @@ const AI_MODEL = {
     },
 
     run(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr, mixtureRatio) {
-        const MIN_LOGS = 20, MIN_TEAM_LOGS = 5;
+        const MIN_LOGS = 5, MIN_TEAM_LOGS = 1;
         if (logs.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
 
         const homeLogs = logs.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase()));
@@ -228,13 +219,12 @@ const AI_MODEL = {
             params: { lambda1, lambda2, lambda3, rho },
             probs: finalProbs,
             topScores: topScores.slice(0, 3),
-            bestTip,
-            generativeProbs, // For Monte Carlo
+            bestTip
         };
     },
 
     autoFit() {
-        if (logs.length < 50) return { error: "Az automatikus illesztéshez legalább 50 meccs szükséges az adatbázisban."};
+        if (logs.length < 20) return { error: "Az automatikus illesztéshez legalább 20 meccs szükséges."};
 
         const empirical = {
             home: logs.filter(l=>l.homeScore > l.awayScore).length / logs.length,
@@ -245,16 +235,14 @@ const AI_MODEL = {
         let bestParams = { rho: 0, lambda3Corr: 0 };
         let minError = Infinity;
 
-        // Grid Search for best parameters
         for (let rho = -0.5; rho <= 0.5; rho += 0.05) {
             for (let l3c = 0; l3c <= 0.5; l3c += 0.05) {
                 let modelProbs = { home: 0, draw: 0, over25: 0 };
                 let count = 0;
                 
-                // Calculate average model predictions over all historical matches
                 for(const log of logs) {
                     const [h_team, a_team] = log.name.split(' - ');
-                    const res = this.run(h_team, a_team, log.home, log.draw, log.away, rho, l3c, 0); // mixture 0 for pure model
+                    const res = this.run(h_team, a_team, log.home, log.draw, log.away, rho, l3c, 0);
                     if(res && !res.error) {
                         modelProbs.home += res.probs.homeProb;
                         modelProbs.draw += res.probs.drawProb;
@@ -284,36 +272,17 @@ const AI_MODEL = {
 };
 
 // --- MAIN APP LOGIC AND UI FUNCTIONS ---
-const formatTimestamp = (isoString) => new Date(isoString).toLocaleString('hu-HU', { dateStyle: 'short', timeStyle: 'short' });
-
-const renderLogs = () => {
-    logListDiv.innerHTML = logs.length === 0 ? `<p class="text-center text-slate-500 py-4">Még nincsenek rögzített eredmények.</p>` : 
-        [...logs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(log => {
-            const outcomeClass = log.outcome ? `outcome-${log.outcome}` : 'bg-gray-100 border-gray-300';
-            return `<div class="p-3 rounded-lg border shadow-sm transition duration-300 card-hover ${outcomeClass}">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-base">${log.name || 'Névtelen meccs'}</h3>
-                        <div class="font-mono text-sm text-slate-700">H: ${log.home.toFixed(2)}, D: ${log.draw.toFixed(2)}, V: ${log.away.toFixed(2)}</div>
-                        <p class="text-sm font-semibold text-slate-600 mt-1">Végeredmény: ${log.homeScore} - ${log.awayScore}</p>
-                        <p class="text-xs text-slate-400 mt-1">${formatTimestamp(log.timestamp)}</p>
-                    </div>
-                    <button data-id="${log.id}" class="delete-log-btn text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-            </div>`;
-        }).join('');
-};
-
 const saveToLocalStorage = () => {
     localStorage.setItem('vsportAdminLogs', JSON.stringify(logs));
 };
 
 const loadFromLocalStorage = () => {
     const storedLogs = localStorage.getItem('vsportAdminLogs');
-    if (storedLogs) logs = JSON.parse(storedLogs);
-    renderLogs();
+    if (storedLogs) {
+        logs = JSON.parse(storedLogs);
+    } else {
+        logs = initialLogs; // Load sample data if nothing is in storage
+    }
 };
 
 const runAIAnalysis = () => {
@@ -325,8 +294,7 @@ const runAIAnalysis = () => {
     const rho = parseFloat(rhoSlider.value);
     const lambda3Corr = parseFloat(lambda3Slider.value);
     const mixtureRatio = parseFloat(mixtureSlider.value);
-    const margin = parseFloat(document.getElementById('margin-slider').value);
-
+    const margin = parseFloat(marginSlider.value);
 
     if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
         aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
@@ -346,6 +314,7 @@ const runAIAnalysis = () => {
         const formatOdd = (odd) => odd.toFixed(2);
         
         const createMarketHTML = (label, prob) => {
+            if (isNaN(prob)) return '';
             const fairOdd = 1 / prob;
             const offeredOdd = fairOdd * (1 - margin);
             return `<div class="bg-gray-900 p-2 rounded-md"><p class="text-xs text-gray-400">${label}</p><p class="font-bold text-white">${probToPercent(prob)}</p><p class="text-xs text-sky-400">${formatOdd(offeredOdd)}</p></div>`;
@@ -391,10 +360,17 @@ const runAIAnalysis = () => {
                         </div>`).join('')}
                     </div>
                 </div>
-                <div>
+                 <div>
                     <h4 class="text-md font-semibold text-sky-300 mb-2">Szimuláció & Vizualizáció</h4>
                     <button id="run-mc-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all text-sm hover:bg-indigo-700">10,000 Meccs Szimulálása</button>
                     <canvas id="heatmap-canvas" class="mt-2 rounded-lg bg-gray-900/50" width="400" height="400" style="display:none;"></canvas>
+                </div>
+                <div>
+                    <h4 class="text-md font-semibold text-sky-300 mb-1">Legjobb Értékalapú Tipp</h4>
+                    <div class="bg-gray-900 rounded-md p-3 text-center">
+                        <p class="text-lg font-bold text-white">${result.bestTip.text}</p>
+                        <p class="text-xs text-sky-300">Valószínűség: ${probToPercent(result.bestTip.prob)} ${result.bestTip.value > 0.01 ? `| Érték: <span class="text-green-400">+${(result.bestTip.value*100).toFixed(0)}%</span>` : ''}</p>
+                    </div>
                 </div>
             </div>`;
                 
@@ -412,7 +388,6 @@ const runAIAnalysis = () => {
 // --- INITIALIZATION AND EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     loadFromLocalStorage();
-    updateWaitingRoomUI();
 });
 
 // --- Event Listeners ---
@@ -426,13 +401,7 @@ allInputs.forEach(input => {
 rhoSlider.addEventListener('input', () => { rhoValue.textContent = parseFloat(rhoSlider.value).toFixed(2); });
 lambda3Slider.addEventListener('input', () => { lambda3Value.textContent = parseFloat(lambda3Slider.value).toFixed(2); });
 mixtureSlider.addEventListener('input', () => { mixtureValue.textContent = `${(parseFloat(mixtureSlider.value) * 100).toFixed(0)}%`; });
-marginSlider.addEventListener('input', () => { document.getElementById('margin-value').textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
-
-
-logListDiv.addEventListener('click', e => {
-    const btn = e.target.closest('.delete-log-btn');
-    if (btn) deleteLog(btn.dataset.id);
-});
+marginSlider.addEventListener('input', () => { marginValue.textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
 
 autofitBtn.addEventListener('click', () => {
     autofitStatus.textContent = 'Illesztés...';
@@ -462,11 +431,24 @@ function runMonteCarlo({lambda1, lambda2, lambda3, rho}, canvas) {
     const N_SIMS = 10000;
     const scores = {};
 
+    function getPoisson(lambda) {
+        let L = Math.exp(-lambda);
+        let k = 0;
+        let p = 1;
+        do {
+            k++;
+            p *= Math.random();
+        } while (p > L);
+        return k - 1;
+    }
+
     for(let i = 0; i < N_SIMS; i++) {
-        const u1 = AI_MODEL._poisson(lambda1, 0); // This isn't right, needs random poisson
-        // Simplified random generation for display purposes
-        const h_goals = Math.round(lambda1 + lambda3 * Math.random());
-        const a_goals = Math.round(lambda2 + lambda3 * Math.random());
+        const u1 = getPoisson(lambda1);
+        const u2 = getPoisson(lambda2);
+        const u3 = getPoisson(lambda3);
+        const h_goals = u1 + u3;
+        const a_goals = u2 + u3;
+
         const key = `${h_goals}-${a_goals}`;
         scores[key] = (scores[key] || 0) + 1;
     }
@@ -484,7 +466,7 @@ function drawHeatmap(scores, ctx, width, height) {
     }
     
     ctx.clearRect(0, 0, width, height);
-    ctx.font = `${cellWidth / 3}px Inter`;
+    ctx.font = `${cellWidth / 3.5}px Inter`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -492,90 +474,20 @@ function drawHeatmap(scores, ctx, width, height) {
         for (let j = 0; j < GRID_SIZE; j++) {
             const key = `${i}-${j}`;
             const count = scores[key] || 0;
-            const alpha = count / maxCount;
+            const alpha = Math.sqrt(count / maxCount); // Sqrt for better color distribution
             
             ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
             ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
             
             ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
-            ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+            if(count > 0) {
+                 ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+            }
         }
     }
 }
-
-
-const downloadFile = (data, filename, type) => {
-    const blob = new Blob([data], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-};
-
-exportJsonBtn.addEventListener('click', () => {
-    const dataStr = JSON.stringify({ logs }, null, 2);
-    downloadFile(dataStr, 'vsport_data.json', 'application/json');
-    importStatus.textContent = 'JSON adatok exportálva!';
-    setTimeout(() => importStatus.textContent = '', 3000);
-});
-
-
-importDataBtn.addEventListener('click', () => importFileInput.click());
-importFileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (Array.isArray(data.logs)) {
-                logs = data.logs || [];
-                saveToLocalStorage();
-                renderLogs();
-                importStatus.textContent = 'Adatok sikeresen importálva!';
-            } else { throw new Error('Hibás fájlformátum.'); }
-        } catch (error) {
-            importStatus.textContent = `Hiba: ${error.message}`;
-        } finally {
-            importFileInput.value = '';
-            setTimeout(() => importStatus.textContent = '', 3000);
-        }
-    };
-    reader.readAsText(file);
-});
-
-// --- Waiting Room ---
-const updateWaitingRoomUI = () => {
-    const status = localStorage.getItem('waitingRoomStatus') || 'closed';
-    if (status === 'open') {
-        waitingRoomToggleBtn.textContent = 'Váróterem Zárása';
-        waitingRoomToggleBtn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-        waitingRoomToggleBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-        waitingRoomStatusSpan.textContent = 'NYITVA';
-        waitingRoomStatusSpan.classList.remove('text-red-600');
-        waitingRoomStatusSpan.classList.add('text-green-600');
-    } else {
-        waitingRoomToggleBtn.textContent = 'Váróterem Nyitása';
-        waitingRoomToggleBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-        waitingRoomToggleBtn.classList.add('bg-purple-600', 'hover:bg-purple-700');
-        waitingRoomStatusSpan.textContent = 'ZÁRVA';
-        waitingRoomStatusSpan.classList.remove('text-green-600');
-        waitingRoomStatusSpan.classList.add('text-red-600');
-    }
-};
-waitingRoomToggleBtn.addEventListener('click', () => {
-    const currentStatus = localStorage.getItem('waitingRoomStatus') || 'closed';
-    const newStatus = currentStatus === 'open' ? 'closed' : 'open';
-    localStorage.setItem('waitingRoomStatus', newStatus);
-    updateWaitingRoomUI();
-});
 </script>
 
 </body>
 </html>
-" and am asking the following query: a varoterem már nem kell meg a meccs adatbázis meg a json import export
 

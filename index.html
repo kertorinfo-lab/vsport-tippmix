@@ -45,6 +45,10 @@
                         <input type="text" inputmode="decimal" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                         <input type="text" inputmode="decimal" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                        <input type="text" inputmode="decimal" id="over-25-odd-input" placeholder="Over 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                        <input type="text" inputmode="decimal" id="btts-yes-odd-input" placeholder="BTTS Igen Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                    </div>
                 </details>
 
                 <details class="mt-2">
@@ -173,7 +177,7 @@ const AI_SYSTEM = {
             const lambda2 = away_exp - lambda3;
             if (lambda1 < 0 || lambda2 < 0) return { error: "Negatív lambda érték, a korreláció túl erős." };
 
-            let generativeProbs = { homeProb: 0, drawProb: 0, awayProb: 0, over25Prob: 0, bttsProb: 0 };
+            let generativeProbs = { homeProb: 0, drawProb: 0, awayProb: 0, over15Prob: 0, over25Prob: 0, bttsProb: 0 };
             let topScores = [];
             let totalProb = 0;
 
@@ -192,6 +196,7 @@ const AI_SYSTEM = {
                 if (i > j) generativeProbs.homeProb += s.probability;
                 else if (j > i) generativeProbs.awayProb += s.probability;
                 else generativeProbs.drawProb += s.probability;
+                if (i + j > 1.5) generativeProbs.over15Prob += s.probability;
                 if (i + j > 2.5) generativeProbs.over25Prob += s.probability;
                 if (i > 0 && j > 0) generativeProbs.bttsProb += s.probability;
             });
@@ -201,6 +206,7 @@ const AI_SYSTEM = {
                 homeProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length : 0,
                 drawProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length : 0,
                 awayProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length : 0,
+                over15Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 1.5).length / relevantLogs.length : 0,
                 over25Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length : 0,
                 bttsProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length : 0
             };
@@ -316,6 +322,8 @@ const runAIAnalysis = () => {
     const rho = parseFloat(rhoSlider.value);
     const lambda3Corr = parseFloat(lambda3Slider.value);
     const mixtureRatio = parseFloat(mixtureSlider.value);
+    const over25Odd = parseFloat(document.getElementById('over-25-odd-input').value.replace(',', '.'));
+    const bttsYesOdd = parseFloat(document.getElementById('btts-yes-odd-input').value.replace(',', '.'));
     
     if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
         aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
@@ -335,16 +343,19 @@ const runAIAnalysis = () => {
             { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: homeOdd },
             { text: 'Döntetlen', prob: result.probs.drawProb, odds: drawOdd },
             { text: 'Vendég győzelem', prob: result.probs.awayProb, odds: awayOdd },
-            { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob },
+            { text: 'Több mint 1.5 gól', prob: result.probs.over15Prob },
+            { text: 'Kevesebb mint 1.5 gól', prob: 1 - result.probs.over15Prob },
+            { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob, odds: over25Odd },
             { text: 'Kevesebb mint 2.5 gól', prob: 1 - result.probs.over25Prob },
-            { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb },
+            { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb, odds: bttsYesOdd },
+            { text: 'Mindkét csapat nem szerez gólt', prob: 1 - result.probs.bttsProb },
         ];
 
         const rankedTips = potentialTips.map(tip => {
-            const value = tip.odds ? (tip.prob * tip.odds) - 1 : 0;
-            const risk = 1 - tip.prob;
-            const score = (tip.prob * (1 + value)) / (1 + risk * 0.5); // Risk-adjusted score
-            return { ...tip, value, score };
+            const value = tip.odds && !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : 0;
+            const kelly = tip.odds && !isNaN(tip.odds) ? ((tip.prob * (tip.odds - 1)) - (1 - tip.prob)) / (tip.odds - 1) : 0;
+            const score = tip.prob * (1 + value);
+            return { ...tip, value, kelly, score };
         }).sort((a, b) => b.score - a.score);
 
         const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(rankedTips[0]);
@@ -392,7 +403,11 @@ const runAIAnalysis = () => {
                         ${rankedTips.slice(0,3).map((tip, index) => `
                             <div class="bg-gray-900 rounded-md p-3 text-center ${index === 0 ? 'border-2 border-sky-400' : ''}">
                                 <p class="text-md font-bold text-white">${tip.text}</p>
-                                <p class="text-xs text-sky-300">Valószínűség: ${probToPercent(tip.prob)} ${tip.value > 0.01 ? `| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span>` : ''}</p>
+                                <div class="text-xs text-sky-300 flex justify-center items-center gap-x-2">
+                                    <span>P: ${probToPercent(tip.prob)}</span> 
+                                    ${tip.value > 0.01 ? `<span>| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}
+                                    ${tip.kelly > 0 ? `<span>| Kelly: <span class="text-yellow-400">${(tip.kelly*100).toFixed(1)}%</span></span>` : ''}
+                                </div>
                             </div>
                         `).join('')}
                     </div>

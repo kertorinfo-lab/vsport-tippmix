@@ -14,6 +14,8 @@
         .poisson-card { border: 2px solid #38bdf8; background-color: #0c3355; }
         input[type=range]::-webkit-slider-thumb { background-color: #38bdf8; }
         input[type=range]::-moz-range-thumb { background-color: #38bdf8; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -32,22 +34,22 @@
         <div class="bg-gray-800 text-white p-5 rounded-xl border border-gray-700 space-y-4">
             <h2 class="text-lg font-semibold text-center">Bemeneti Adatok és Kalibráció</h2>
             <div id="ai-panel">
-                <!-- Match Inputs -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-                    <input type="text" id="home-team-input" placeholder="Hazai csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                    <input type="text" id="away-team-input" placeholder="Vendég csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <input type="text" inputmode="decimal" id="home-odd-input" placeholder="Hazai (1)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                    <input type="text" inputmode="decimal" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                    <input type="text" inputmode="decimal" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                </div>
-                
-                <!-- Model Tuning -->
-                <div class="mt-4 pt-3 border-t border-gray-600">
-                    <h3 class="text-md font-semibold text-center text-sky-300 mb-3">Modell Finomhangolása</h3>
-                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                        <!-- Left Side: Sliders -->
+                <details open>
+                    <summary class="font-semibold text-sky-300 cursor-pointer py-2">Mérkőzés Adatok</summary>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4 pt-2">
+                        <input type="text" id="home-team-input" placeholder="Hazai csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                        <input type="text" id="away-team-input" placeholder="Vendég csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <input type="text" inputmode="decimal" id="home-odd-input" placeholder="Hazai (1)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                        <input type="text" inputmode="decimal" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                        <input type="text" inputmode="decimal" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                    </div>
+                </details>
+
+                <details class="mt-2">
+                    <summary class="font-semibold text-sky-300 cursor-pointer py-2">Modell Finomhangolása</summary>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm pt-2">
                         <div class="space-y-4">
                             <div>
                                 <label for="rho-slider" class="block mb-1 text-gray-300">Dixon-Coles (ρ): <span id="rho-value">-0.15</span></label>
@@ -61,20 +63,17 @@
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
-                             <div>
-                                <label for="margin-slider" class="block mb-1 text-gray-300">Alap Margin: <span id="margin-value">5.0%</span></label>
-                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
-                            </div>
                         </div>
-                        <!-- Right Side: Autofit -->
                         <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg space-y-2">
-                             <button id="autofit-btn" class="w-full bg-sky-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all duration-300 text-center hover:bg-sky-700">Automatikus Illesztés</button>
-                             <button id="drift-check-btn" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all duration-300 text-center hover:bg-purple-700">Drift Ellenőrzés</button>
+                             <div class="w-full flex gap-2">
+                                <button id="autofit-full-btn" class="w-full bg-sky-600 text-white font-bold py-2 px-2 rounded-lg btn-hover text-xs hover:bg-sky-700">Auto-Fit (Teljes)</button>
+                                <button id="autofit-recent-btn" class="w-full bg-sky-700 text-white font-bold py-2 px-2 rounded-lg btn-hover text-xs hover:bg-sky-800">Auto-Fit (Friss)</button>
+                             </div>
+                             <button id="drift-check-btn" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover hover:bg-purple-700 text-sm">Drift Ellenőrzés</button>
                              <p id="autofit-status" class="text-xs font-semibold h-4 mt-1 text-center"></p>
                         </div>
                     </div>
-                </div>
-
+                </details>
                  <div id="ai-result" class="pt-4 min-h-[400px]"></div>
             </div>
         </div>
@@ -82,12 +81,12 @@
 
     <!-- Modal Container -->
     <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 text-white w-full max-w-lg rounded-xl shadow-2xl flex flex-col">
+        <div class="bg-gray-800 text-white w-full max-w-2xl rounded-xl shadow-2xl flex flex-col">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
                 <h3 id="modal-title" class="text-lg font-bold text-sky-300">Modal Title</h3>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
-            <div id="modal-content" class="p-6 space-y-4"></div>
+            <div id="modal-content" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"></div>
         </div>
     </div>
 
@@ -114,7 +113,6 @@ const modalContainer = document.getElementById('modal-container');
 const modalTitle = document.getElementById('modal-title');
 const modalContent = document.getElementById('modal-content');
 const closeModalBtn = document.getElementById('close-modal-btn');
-
 
 // --- APP STATE ---
 const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "London Ágyúk - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }, { id: 6, name: "Real Madrid - Barcelona", home: 1.80, draw: 3.90, away: 4.00, homeScore: 3, awayScore: 2, outcome: "homeWin" }, { id: 7, name: "Bayern München - Dortmund", home: 1.55, draw: 4.75, away: 5.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 8, name: "PSG - Lyon", home: 1.40, draw: 5.00, away: 7.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 9, name: "Inter - Milan", home: 2.00, draw: 3.50, away: 3.60, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 10, name: "Juventus - Roma", home: 1.90, draw: 3.40, away: 4.20, homeScore: 1, awayScore: 0, outcome: "homeWin" }, { id: 11, name: "Vörös Ördögök - Liverpool", home: 3.20, draw: 3.80, away: 2.10, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 12, name: "Fulham - Manchester Kék", home: 9.00, draw: 5.50, away: 1.30, homeScore: 0, awayScore: 4, outcome: "awayWin" }, { id: 13, name: "Tottenham - London Ágyúk", home: 2.90, draw: 3.60, away: 2.30, homeScore: 2, awayScore: 3, outcome: "awayWin" }, { id: 14, "name": "West Ham - Liverpool", "home": 4.5, "draw": 4.3, "away": 1.65, "homeScore": 2, "awayScore": 2, "outcome": "draw" }, { id: 15, "name": "Aston Villa - Chelsea", "home": 2.2, "draw": 3.6, "away": 3.0, "homeScore": 2, "awayScore": 2, "outcome": "draw" } ];
@@ -144,16 +142,16 @@ const AI_SYSTEM = {
             return 1;
         },
 
-        run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio) {
+        run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, dataSource = logs) {
             const MIN_LOGS = 5, MIN_TEAM_LOGS = 1;
-            if (logs.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
+            if (dataSource.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
 
-            const homeLogs = logs.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase()));
-            const awayLogs = logs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase()));
+            const homeLogs = dataSource.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase()));
+            const awayLogs = dataSource.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase()));
             if (homeLogs.length < MIN_TEAM_LOGS || awayLogs.length < MIN_TEAM_LOGS) return { error: `Nincs elég adat a csapathoz (minimum ${MIN_TEAM_LOGS} meccs szükséges).` };
             
-            const liga_home_avg = logs.reduce((s, l) => s + l.homeScore, 0) / logs.length;
-            const liga_away_avg = logs.reduce((s, l) => s + l.awayScore, 0) / logs.length;
+            const liga_home_avg = dataSource.reduce((s, l) => s + l.homeScore, 0) / dataSource.length;
+            const liga_away_avg = dataSource.reduce((s, l) => s + l.awayScore, 0) / dataSource.length;
 
             const home_attack_str = (homeLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(homeTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / homeLogs.length) / liga_home_avg;
             const away_attack_str = (awayLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(awayTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / awayLogs.length) / liga_away_avg;
@@ -193,11 +191,11 @@ const AI_SYSTEM = {
             
             const relevantLogs = [...homeLogs, ...awayLogs];
             const empiricalProbs = {
-                homeProb: relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length,
-                drawProb: relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length,
-                awayProb: relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length,
-                over25Prob: relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length,
-                bttsProb: relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length
+                homeProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length : 0,
+                drawProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length : 0,
+                awayProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length : 0,
+                over25Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length : 0,
+                bttsProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length : 0
             };
             
             const finalProbs = {};
@@ -217,13 +215,10 @@ const AI_SYSTEM = {
     },
 
     ADVERSARIAL_CHECKER: {
-        run(probs, bestTip) {
+        run(bestTip) {
             if (!bestTip || !bestTip.value) return null;
-            if (bestTip.prob < 0.3 && bestTip.value > 1.0) { // Pl. 30% alatti esély, de 100% feletti érték
-                return {
-                    level: 'Magas',
-                    message: `Extrém magas érték (${(bestTip.value*100).toFixed(0)}%) egy alacsony valószínűségű kimenetelen. Ez anomáliára utalhat.`
-                };
+            if (bestTip.prob < 0.3 && bestTip.value > 1.0) { 
+                return { message: `Extrém magas érték (${(bestTip.value*100).toFixed(0)}%) egy alacsony valószínűségű kimenetelen. Ez anomáliára utalhat.` };
             }
             return null;
         }
@@ -232,11 +227,8 @@ const AI_SYSTEM = {
     DYNAMIC_MARGIN: {
         run(probs) {
             const uncertainty = 1 - Math.max(probs.homeProb, probs.drawProb, probs.awayProb);
-            const suggestedMargin = 0.02 + (uncertainty * 0.1); // Alap 2% + bizonytalansággal nő
-            return {
-                suggestedMargin: Math.min(suggestedMargin, 0.15), // Max 15%
-                uncertainty
-            };
+            const suggestedMargin = 0.02 + (uncertainty * 0.1);
+            return { suggestedMargin: Math.min(suggestedMargin, 0.15) };
         }
     },
 
@@ -245,28 +237,23 @@ const AI_SYSTEM = {
             if (logs.length < 40) return { message: "Nincs elég adat a drift elemzéshez (min. 40 meccs).", level: 'info' };
             const recentLogs = logs.slice(0, 20);
             const historicalLogs = logs.slice(20);
-
             const calcAvgGoals = (logSet) => logSet.reduce((sum, l) => sum + l.homeScore + l.awayScore, 0) / logSet.length;
-            
-            const recentAvg = calcAvgGoals(recentLogs);
-            const historicalAvg = calcAvgGoals(historicalLogs);
-            
-            const drift = (recentAvg - historicalAvg) / historicalAvg;
-            if (Math.abs(drift) > 0.20) { // 20%-nál nagyobb változás
-                 return { message: `Figyelem: Jelentős trendváltozás (${(drift*100).toFixed(0)}%) a gólok számában az utóbbi 20 meccsen!`, level: 'warning' };
+            const drift = (calcAvgGoals(recentLogs) - calcAvgGoals(historicalLogs)) / calcAvgGoals(historicalLogs);
+            if (Math.abs(drift) > 0.20) {
+                 return { message: `Figyelem: Jelentős trendváltozás (${(drift*100).toFixed(0)}%) a gólokban!`, level: 'warning' };
             }
             return { message: "Nem észlelhető jelentős trendváltozás.", level: 'success' };
         }
     },
 
     AUTO_FIT: {
-        run() {
-            if (logs.length < 20) return { error: "Az automatikus illesztéshez legalább 20 meccs szükséges."};
+        run(dataSource) {
+            if (dataSource.length < 20) return { error: `Az automatikus illesztéshez legalább 20 meccs szükséges.`};
 
             const empirical = {
-                home: logs.filter(l=>l.homeScore > l.awayScore).length / logs.length,
-                draw: logs.filter(l=>l.homeScore === l.awayScore).length / logs.length,
-                over25: logs.filter(l=>l.homeScore + l.awayScore > 2.5).length / logs.length
+                home: dataSource.filter(l=>l.homeScore > l.awayScore).length / dataSource.length,
+                draw: dataSource.filter(l=>l.homeScore === l.awayScore).length / dataSource.length,
+                over25: dataSource.filter(l=>l.homeScore + l.awayScore > 2.5).length / dataSource.length
             };
 
             let bestParams = { rho: 0, lambda3Corr: 0 };
@@ -274,12 +261,11 @@ const AI_SYSTEM = {
 
             for (let rho = -0.5; rho <= 0.5; rho += 0.1) {
                 for (let l3c = 0; l3c <= 0.5; l3c += 0.1) {
-                    let modelProbs = { home: 0, draw: 0, over25: 0 };
-                    let count = 0;
+                    let modelProbs = { home: 0, draw: 0, over25: 0 }, count = 0;
                     
-                    for(const log of logs) {
+                    for(const log of dataSource) {
                         const [h_team, a_team] = log.name.split(' - ');
-                        const res = AI_SYSTEM.GENERATIVE_CORE.run(h_team, a_team, rho, l3c, 0);
+                        const res = AI_SYSTEM.GENERATIVE_CORE.run(h_team, a_team, rho, l3c, 0, dataSource);
                         if(res && !res.error) {
                             modelProbs.home += res.probs.homeProb;
                             modelProbs.draw += res.probs.drawProb;
@@ -348,13 +334,14 @@ const runAIAnalysis = () => {
             { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb },
         ];
 
-        const bestTip = potentialTips.map(tip => {
+        const rankedTips = potentialTips.map(tip => {
             const value = tip.odds ? (tip.prob * tip.odds) - 1 : 0;
-            const score = tip.prob * (1 + value);
+            const risk = 1 - tip.prob;
+            const score = (tip.prob * (1 + value)) / (1 + risk * 0.5); // Risk-adjusted score
             return { ...tip, value, score };
-        }).sort((a, b) => b.score - a.score)[0];
+        }).sort((a, b) => b.score - a.score);
 
-        const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(result.probs, bestTip);
+        const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(rankedTips[0]);
         const dynamicMargin = AI_SYSTEM.DYNAMIC_MARGIN.run(result.probs);
         
         const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
@@ -362,7 +349,7 @@ const runAIAnalysis = () => {
         const cardHTML = `<div class="p-4 poisson-card rounded-lg text-left space-y-4">
                 ${adversarialWarning ? `<div class="p-3 bg-red-500/20 border border-red-500 rounded-lg text-center"><p class="text-sm font-bold text-red-300">Kockázati Figyelmeztetés</p><p class="text-xs text-red-400 mt-1">${adversarialWarning.message}</p></div>` : ''}
                 <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Bemeneti Erősségek (Adatbázis alapján)</h4>
+                    <h4 class="font-bold text-sky-300 mb-2">Bemeneti Erősségek</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-sm">
                         <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Támadó</p><p class="font-bold text-white">${result.strengths.home_attack_str.toFixed(2)}</p></div>
                         <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Védekező</p><p class="font-bold text-white">${result.strengths.home_defense_str.toFixed(2)}</p></div>
@@ -370,8 +357,8 @@ const runAIAnalysis = () => {
                         <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${awayTeam} Védekező</p><p class="font-bold text-white">${result.strengths.away_defense_str.toFixed(2)}</p></div>
                     </div>
                 </div>
-                <div>
-                     <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek (${(mixtureRatio*100).toFixed(0)}% Preset Boost)</h4>
+                 <div>
+                    <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek (${(mixtureRatio*100).toFixed(0)}% Preset Boost)</h4>
                      <div class="grid grid-cols-3 gap-2 text-center text-sm">
                         <div class="bg-gray-900 p-2 rounded-md"><p class="text-xs text-gray-400">Hazai</p><p class="font-bold text-white">${probToPercent(result.probs.homeProb)}</p></div>
                         <div class="bg-gray-900 p-2 rounded-md"><p class="text-xs text-gray-400">Döntetlen</p><p class="font-bold text-white">${probToPercent(result.probs.drawProb)}</p></div>
@@ -379,22 +366,29 @@ const runAIAnalysis = () => {
                      </div>
                 </div>
                 <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés és Dinamikus Margin</h4>
+                    <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés & Margin</h4>
                     <div class="bg-gray-900/50 p-3 rounded-lg text-center text-sm">
-                        <p>A piac bizonytalansága alapján a javasolt margin: <span class="font-bold text-sky-300">${(dynamicMargin.suggestedMargin*100).toFixed(1)}%</span></p>
+                        <p>Javasolt alap margin: <span class="font-bold text-sky-300">${(dynamicMargin.suggestedMargin*100).toFixed(1)}%</span></p>
                     </div>
                 </div>
                  <div>
                     <h4 class="text-md font-semibold text-sky-300 mb-2">Explainability & Audit</h4>
-                    <button id="run-cf-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all text-sm hover:bg-indigo-700">Kontrafaktuális Szimuláció</button>
-                    <button id="run-mc-sim" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all text-sm hover:bg-purple-700 mt-2">Monte Carlo Vizualizáció</button>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="run-cf-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-700">Kontrafaktuális</button>
+                        <button id="run-sensitivity-sim" class="w-full bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-800">Érzékenység</button>
+                    </div>
+                    <button id="run-mc-sim" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-purple-700 mt-2">Monte Carlo Vizualizáció</button>
                     <canvas id="heatmap-canvas" class="mt-2 rounded-lg bg-gray-900/50" width="400" height="400" style="display:none;"></canvas>
                 </div>
                 <div>
-                    <h4 class="text-md font-semibold text-sky-300 mb-1">Legjobb Értékalapú Tipp</h4>
-                    <div class="bg-gray-900 rounded-md p-3 text-center">
-                        <p class="text-lg font-bold text-white">${bestTip.text}</p>
-                        <p class="text-xs text-sky-300">Valószínűség: ${probToPercent(bestTip.prob)} ${bestTip.value > 0.01 ? `| Érték: <span class="text-green-400">+${(bestTip.value*100).toFixed(0)}%</span>` : ''}</p>
+                    <h4 class="text-md font-semibold text-sky-300 mb-1">Ajánlott Portfólió (Kockázattal Súlyozva)</h4>
+                    <div class="space-y-1">
+                        ${rankedTips.slice(0,3).map((tip, index) => `
+                            <div class="bg-gray-900 rounded-md p-3 text-center ${index === 0 ? 'border-2 border-sky-400' : ''}">
+                                <p class="text-md font-bold text-white">${tip.text}</p>
+                                <p class="text-xs text-sky-300">Valószínűség: ${probToPercent(tip.prob)} ${tip.value > 0.01 ? `| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span>` : ''}</p>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             </div>`;
@@ -402,25 +396,24 @@ const runAIAnalysis = () => {
         aiResultDiv.innerHTML = cardHTML;
 
         document.getElementById('run-mc-sim').addEventListener('click', () => {
-            const canvas = document.getElementById('heatmap-canvas');
-            canvas.style.display = 'block';
-            runMonteCarlo(result.params, canvas);
+            document.getElementById('heatmap-canvas').style.display = 'block';
+            runMonteCarlo(result.params, document.getElementById('heatmap-canvas'));
         });
         document.getElementById('run-cf-sim').addEventListener('click', () => {
-            runCounterfactual(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr, mixtureRatio, result.probs);
+            runCounterfactual(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, result.probs);
+        });
+        document.getElementById('run-sensitivity-sim').addEventListener('click', () => {
+             runSensitivityAnalysis(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio);
         });
 
     }, 100);
 };
 
 // --- INITIALIZATION AND EVENT LISTENERS ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadFromLocalStorage();
-});
+document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
 
 // --- Event Listeners ---
-const allInputs = document.querySelectorAll('.ai-input');
-allInputs.forEach(input => {
+document.querySelectorAll('.ai-input').forEach(input => {
     input.addEventListener('input', () => {
         clearTimeout(analysisTimeout);
         analysisTimeout = setTimeout(runAIAnalysis, 500);
@@ -431,11 +424,26 @@ lambda3Slider.addEventListener('input', () => { lambda3Value.textContent = parse
 mixtureSlider.addEventListener('input', () => { mixtureValue.textContent = `${(parseFloat(mixtureSlider.value) * 100).toFixed(0)}%`; });
 marginSlider.addEventListener('input', () => { marginValue.textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
 
-autofitBtn.addEventListener('click', () => {
+document.getElementById('autofit-full-btn').addEventListener('click', () => runAutofit(logs));
+document.getElementById('autofit-recent-btn').addEventListener('click', () => runAutofit(logs.slice(0, 50)));
+
+driftCheckBtn.addEventListener('click', () => {
+    const result = AI_SYSTEM.DRIFT_MONITOR.run();
+    const color = result.level === 'warning' ? 'text-yellow-400' : result.level === 'success' ? 'text-green-400' : 'text-gray-400';
+    autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center ${color}`;
+    autofitStatus.textContent = result.message;
+    setTimeout(() => {
+        autofitStatus.textContent = '';
+        autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center text-green-400`;
+    }, 5000);
+});
+
+// --- Core Functions ---
+function runAutofit(dataSource) {
     autofitStatus.textContent = 'Illesztés...';
     autofitBtn.disabled = true;
     setTimeout(() => {
-        const result = AI_SYSTEM.AUTO_FIT.run();
+        const result = AI_SYSTEM.AUTO_FIT.run(dataSource);
         if(result.error) {
             autofitStatus.textContent = result.error;
         } else {
@@ -449,20 +457,7 @@ autofitBtn.addEventListener('click', () => {
         autofitBtn.disabled = false;
         setTimeout(() => autofitStatus.textContent = '', 4000);
     }, 100);
-});
-
-driftCheckBtn.addEventListener('click', () => {
-    const result = AI_SYSTEM.DRIFT_MONITOR.run();
-    const color = result.level === 'warning' ? 'text-yellow-400' : result.level === 'success' ? 'text-green-400' : 'text-gray-400';
-    autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center ${color}`;
-    autofitStatus.textContent = result.message;
-    setTimeout(() => {
-        autofitStatus.textContent = '';
-        autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center text-green-400`;
-    }, 5000);
-});
-
-// --- Monte Carlo, Counterfactual & Other Functions ---
+}
 
 function runMonteCarlo({lambda1, lambda2, lambda3}, canvas) {
     const ctx = canvas.getContext('2d');
@@ -470,9 +465,7 @@ function runMonteCarlo({lambda1, lambda2, lambda3}, canvas) {
     const scores = {};
 
     function getPoisson(lambda) {
-        let L = Math.exp(-lambda);
-        let k = 0;
-        let p = 1;
+        let L = Math.exp(-lambda); let k = 0, p = 1;
         do { k++; p *= Math.random(); } while (p > L);
         return k - 1;
     }
@@ -480,10 +473,8 @@ function runMonteCarlo({lambda1, lambda2, lambda3}, canvas) {
     for(let i = 0; i < N_SIMS; i++) {
         const h_goals = getPoisson(lambda1) + getPoisson(lambda3);
         const a_goals = getPoisson(lambda2) + getPoisson(lambda3);
-        const key = `${h_goals}-${a_goals}`;
-        scores[key] = (scores[key] || 0) + 1;
+        scores[`${h_goals}-${a_goals}`] = (scores[`${h_goals}-${a_goals}`] || 0) + 1;
     }
-    
     drawHeatmap(scores, ctx, canvas.width, canvas.height);
 }
 
@@ -504,45 +495,81 @@ function drawHeatmap(scores, ctx, width, height) {
             const key = `${i}-${j}`;
             const count = scores[key] || 0;
             const alpha = Math.sqrt(count / maxCount);
-            
             ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
             ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-            
-            ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
-            if(count > 0) ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+            if(count > 0) {
+                ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
+                ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+            }
         }
     }
 }
 
-function runCounterfactual(home, away, hO, dO, aO, rho, l3c, mix, originalProbs) {
+function runCounterfactual(home, away, rho, l3c, mix, originalProbs) {
     const cfRho = rho + 0.1;
     const result = AI_SYSTEM.GENERATIVE_CORE.run(home, away, cfRho, l3c, mix);
     if(result.error) return;
 
     const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
     const formatDiff = (newVal, oldVal) => {
-        const diff = newVal - oldVal;
+        const diff = (newVal - oldVal) * 100;
         const color = diff > 0 ? 'text-green-400' : 'text-red-400';
-        return `<span class="${color}">(${(diff*100).toFixed(1)}%)</span>`;
+        return `<span class="${color}">(${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)</span>`;
     };
 
-    const modal = document.getElementById('modal-container');
     modalTitle.textContent = 'Kontrafaktuális Szimuláció';
-    document.getElementById('cf-description').textContent = `Szimuláció, ha ρ értéke ${rho.toFixed(2)}-ról ${cfRho.toFixed(2)}-ra változna:`;
-    document.getElementById('cf-results').innerHTML = `
-        <div class="flex justify-between text-sm"><span class="text-gray-400">Hazai Győzelem:</span> <span>${probToPercent(result.probs.homeProb)} ${formatDiff(result.probs.homeProb, originalProbs.homeProb)}</span></div>
-        <div class="flex justify-between text-sm"><span class="text-gray-400">Döntetlen:</span> <span>${probToPercent(result.probs.drawProb)} ${formatDiff(result.probs.drawProb, originalProbs.drawProb)}</span></div>
-        <div class="flex justify-between text-sm"><span class="text-gray-400">Vendég Győzelem:</span> <span>${probToPercent(result.probs.awayProb)} ${formatDiff(result.probs.awayProb, originalProbs.awayProb)}</span></div>
-        <div class="flex justify-between text-sm"><span class="text-gray-400">Over 2.5:</span> <span>${probToPercent(result.probs.over25Prob)} ${formatDiff(result.probs.over25Prob, originalProbs.over25Prob)}</span></div>
+    modalContent.innerHTML = `
+        <p class="text-sm text-gray-300 mb-4">Szimuláció, ha ρ értéke ${rho.toFixed(2)}-ról ${cfRho.toFixed(2)}-ra változna:</p>
+        <div class="space-y-2">
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Hazai Győzelem:</span> <span>${probToPercent(result.probs.homeProb)} ${formatDiff(result.probs.homeProb, originalProbs.homeProb)}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Döntetlen:</span> <span>${probToPercent(result.probs.drawProb)} ${formatDiff(result.probs.drawProb, originalProbs.drawProb)}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Vendég Győzelem:</span> <span>${probToPercent(result.probs.awayProb)} ${formatDiff(result.probs.awayProb, originalProbs.awayProb)}</span></div>
+            <div class="flex justify-between text-sm"><span class="text-gray-400">Over 2.5:</span> <span>${probToPercent(result.probs.over25Prob)} ${formatDiff(result.probs.over25Prob, originalProbs.over25Prob)}</span></div>
+        </div>
     `;
-    modal.classList.remove('hidden');
-    
-    closeModalBtn.onclick = () => modal.classList.add('hidden');
-    modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+    modalContainer.classList.remove('hidden');
 }
 
-// --- Local Storage Management ---
+function runSensitivityAnalysis(home, away, rho, l3c, mix) {
+    const createRow = (p_rho, p_l3c) => {
+        const res = AI_SYSTEM.GENERATIVE_CORE.run(home, away, p_rho, p_l3c, mix);
+        return `
+            <tr>
+                <td class="px-2 py-1 text-center font-mono">${p_rho.toFixed(2)}, ${p_l3c.toFixed(2)}</td>
+                <td class="px-2 py-1 text-center">${(res.probs.homeProb*100).toFixed(1)}%</td>
+                <td class="px-2 py-1 text-center">${(res.probs.drawProb*100).toFixed(1)}%</td>
+                <td class="px-2 py-1 text-center">${(res.probs.over25Prob*100).toFixed(1)}%</td>
+            </tr>
+        `;
+    }
+    
+    modalTitle.textContent = 'Paraméterérzékenység';
+    modalContent.innerHTML = `
+        <p class="text-sm text-gray-300 mb-2">A fő piaci valószínűségek változása a ρ és λ3 korrelációs paraméterek módosításával.</p>
+        <table class="w-full text-xs text-left">
+            <thead class="bg-gray-700"><tr>
+                <th class="px-2 py-1 text-center">(ρ, λ3)</th>
+                <th class="px-2 py-1 text-center">Hazai %</th>
+                <th class="px-2 py-1 text-center">Döntetlen %</th>
+                <th class="px-2 py-1 text-center">Over 2.5 %</th>
+            </tr></thead>
+            <tbody class="bg-gray-900 divide-y divide-gray-700">
+                ${createRow(rho, l3c)}
+                ${createRow(rho + 0.1, l3c)}
+                ${createRow(rho - 0.1, l3c)}
+                ${createRow(rho, l3c + 0.1)}
+                ${createRow(rho, l3c - 0.1)}
+            </tbody>
+        </table>
+    `;
+    modalContainer.classList.remove('hidden');
+}
+
+
+// --- Local Storage Management & Modal Closing ---
 document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+closeModalBtn.onclick = () => modalContainer.classList.add('hidden');
+modalContainer.onclick = (e) => { if (e.target === modalContainer) modalContainer.classList.add('hidden'); };
 
 </script>
 

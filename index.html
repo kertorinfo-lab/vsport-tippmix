@@ -62,7 +62,7 @@
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
                              <div>
-                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
+                                <label for="margin-slider" class="block mb-1 text-gray-300">Alap Margin: <span id="margin-value">5.0%</span></label>
                                 <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
                         </div>
@@ -80,15 +80,14 @@
         </div>
     </main>
 
-    <!-- Counterfactual Modal -->
-    <div id="counterfactual-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 text-white w-full max-w-md rounded-xl shadow-2xl flex flex-col p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-sky-300">Kontrafaktuális Szimuláció</h3>
-                <button id="close-cf-modal" class="text-gray-400 hover:text-white">&times;</button>
+    <!-- Modal Container -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-gray-800 text-white w-full max-w-lg rounded-xl shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                <h3 id="modal-title" class="text-lg font-bold text-sky-300">Modal Title</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
             </div>
-            <p id="cf-description" class="text-sm text-gray-300 mb-4"></p>
-            <div id="cf-results" class="space-y-2"></div>
+            <div id="modal-content" class="p-6 space-y-4"></div>
         </div>
     </div>
 
@@ -111,15 +110,14 @@ const aiResultDiv = document.getElementById('ai-result');
 const autofitBtn = document.getElementById('autofit-btn');
 const driftCheckBtn = document.getElementById('drift-check-btn');
 const autofitStatus = document.getElementById('autofit-status');
+const modalContainer = document.getElementById('modal-container');
+const modalTitle = document.getElementById('modal-title');
+const modalContent = document.getElementById('modal-content');
+const closeModalBtn = document.getElementById('close-modal-btn');
+
 
 // --- APP STATE ---
-const initialLogs = [
-    { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 2, awayScore: 0, outcome: "homeWin" },
-    { id: 2, name: "Liverpool - Tottenham", home: 1.80, draw: 3.80, away: 4.00, homeScore: 1, awayScore: 1, outcome: "draw" },
-    { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 2.20, draw: 3.50, away: 3.20, homeScore: 2, awayScore: 2, outcome: "draw" },
-    { id: 4, name: "London Ágyúk - Fulham", home: 1.30, draw: 5.50, away: 9.00, homeScore: 3, awayScore: 0, outcome: "homeWin" },
-    { id: 5, name: "Crystal Palace - Newcastle", home: 3.00, draw: 3.40, away: 2.30, homeScore: 0, awayScore: 1, outcome: "awayWin" },
-];
+const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "London Ágyúk - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }, { id: 6, name: "Real Madrid - Barcelona", home: 1.80, draw: 3.90, away: 4.00, homeScore: 3, awayScore: 2, outcome: "homeWin" }, { id: 7, name: "Bayern München - Dortmund", home: 1.55, draw: 4.75, away: 5.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 8, name: "PSG - Lyon", home: 1.40, draw: 5.00, away: 7.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 9, name: "Inter - Milan", home: 2.00, draw: 3.50, away: 3.60, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 10, name: "Juventus - Roma", home: 1.90, draw: 3.40, away: 4.20, homeScore: 1, awayScore: 0, outcome: "homeWin" }, { id: 11, name: "Vörös Ördögök - Liverpool", home: 3.20, draw: 3.80, away: 2.10, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 12, name: "Fulham - Manchester Kék", home: 9.00, draw: 5.50, away: 1.30, homeScore: 0, awayScore: 4, outcome: "awayWin" }, { id: 13, name: "Tottenham - London Ágyúk", home: 2.90, draw: 3.60, away: 2.30, homeScore: 2, awayScore: 3, outcome: "awayWin" }, { id: 14, "name": "West Ham - Liverpool", "home": 4.5, "draw": 4.3, "away": 1.65, "homeScore": 2, "awayScore": 2, "outcome": "draw" }, { id: 15, "name": "Aston Villa - Chelsea", "home": 2.2, "draw": 3.6, "away": 3.0, "homeScore": 2, "awayScore": 2, "outcome": "draw" } ];
 let logs = [];
 let analysisTimeout;
 
@@ -528,7 +526,8 @@ function runCounterfactual(home, away, hO, dO, aO, rho, l3c, mix, originalProbs)
         return `<span class="${color}">(${(diff*100).toFixed(1)}%)</span>`;
     };
 
-    const modal = document.getElementById('counterfactual-modal');
+    const modal = document.getElementById('modal-container');
+    modalTitle.textContent = 'Kontrafaktuális Szimuláció';
     document.getElementById('cf-description').textContent = `Szimuláció, ha ρ értéke ${rho.toFixed(2)}-ról ${cfRho.toFixed(2)}-ra változna:`;
     document.getElementById('cf-results').innerHTML = `
         <div class="flex justify-between text-sm"><span class="text-gray-400">Hazai Győzelem:</span> <span>${probToPercent(result.probs.homeProb)} ${formatDiff(result.probs.homeProb, originalProbs.homeProb)}</span></div>
@@ -538,7 +537,7 @@ function runCounterfactual(home, away, hO, dO, aO, rho, l3c, mix, originalProbs)
     `;
     modal.classList.remove('hidden');
     
-    document.getElementById('close-cf-modal').onclick = () => modal.classList.add('hidden');
+    closeModalBtn.onclick = () => modal.classList.add('hidden');
     modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
 }
 

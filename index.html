@@ -10,12 +10,16 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .card-hover:hover { transform: scale(1.01); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); }
         .loader { width: 24px; height: 24px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         .poisson-card { border: 2px solid #38bdf8; background-color: #0c3355; }
         input[type=range]::-webkit-slider-thumb { background-color: #38bdf8; }
         input[type=range]::-moz-range-thumb { background-color: #38bdf8; }
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
+        .outcome-homeWin { background-color: #e8f5f9; border-left: 4px solid #4caf50; }
+        .outcome-awayWin { background-color: #ffebee; border-left: 4px solid #f44336; }
+        .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -27,6 +31,12 @@
              <div class="text-left">
                   <h1 class="text-2xl md:text-3xl font-bold text-slate-900">VSport Elemző Motor</h1>
                   <p id="app-welcome-user" class="text-slate-500 mt-1">Bejelentkezve: <span class="font-bold text-purple-600">krisztian</span></p>
+             </div>
+             <div class="text-left sm:text-right space-y-2 w-full sm:w-auto">
+                  <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
+                    <span>Statisztika</span>
+                </button>
              </div>
         </div>
 
@@ -45,7 +55,7 @@
                         <input type="text" inputmode="decimal" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                         <input type="text" inputmode="decimal" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                         <input type="text" inputmode="decimal" id="over-25-odd-input" placeholder="Over 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                         <input type="text" inputmode="decimal" id="btts-yes-odd-input" placeholder="BTTS Igen Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                     </div>
@@ -68,10 +78,6 @@
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
-                             <div>
-                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
-                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
-                            </div>
                         </div>
                         <!-- Right Side: Autofit -->
                         <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg space-y-2">
@@ -86,6 +92,11 @@
                 </details>
                  <div id="ai-result" class="pt-4 min-h-[400px]"></div>
             </div>
+        </div>
+        
+        <div id="database-section">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Meccs Adatbázis</h2>
+            <div id="log-list" class="space-y-3"></div>
         </div>
     </main>
 
@@ -124,10 +135,13 @@ const modalContainer = document.getElementById('modal-container');
 const modalTitle = document.getElementById('modal-title');
 const modalContent = document.getElementById('modal-content');
 const closeModalBtn = document.getElementById('close-modal-btn');
+const openStatsBtn = document.getElementById('open-stats-btn');
+const logListDiv = document.getElementById('log-list');
 
 // --- APP STATE ---
 const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "London Ágyúk - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }, { id: 6, name: "Real Madrid - Barcelona", home: 1.80, draw: 3.90, away: 4.00, homeScore: 3, awayScore: 2, outcome: "homeWin" }, { id: 7, name: "Bayern München - Dortmund", home: 1.55, draw: 4.75, away: 5.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 8, name: "PSG - Lyon", home: 1.40, draw: 5.00, away: 7.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 9, name: "Inter - Milan", home: 2.00, draw: 3.50, away: 3.60, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 10, name: "Juventus - Roma", home: 1.90, draw: 3.40, away: 4.20, homeScore: 1, awayScore: 0, outcome: "homeWin" }, { id: 11, name: "Vörös Ördögök - Liverpool", home: 3.20, draw: 3.80, away: 2.10, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 12, name: "Fulham - Manchester Kék", home: 9.00, draw: 5.50, away: 1.30, homeScore: 0, awayScore: 4, outcome: "awayWin" }, { id: 13, name: "Tottenham - London Ágyúk", home: 2.90, draw: 3.60, away: 2.30, homeScore: 2, awayScore: 3, outcome: "awayWin" }, { id: 14, "name": "West Ham - Liverpool", "home": 4.5, "draw": 4.3, "away": 1.65, "homeScore": 2, "awayScore": 2, "outcome": "draw" }, { id: 15, "name": "Aston Villa - Chelsea", "home": 2.2, "draw": 3.6, "away": 3.0, "homeScore": 2, "awayScore": 2, "outcome": "draw" } ];
 let logs = [];
+let predictionsLog = [];
 let analysisTimeout;
 
 // --- BIVARIATE POISSON MODEL (DIXON-COLES) ---
@@ -322,8 +336,6 @@ const runAIAnalysis = () => {
     const rho = parseFloat(rhoSlider.value);
     const lambda3Corr = parseFloat(lambda3Slider.value);
     const mixtureRatio = parseFloat(mixtureSlider.value);
-    const over25Odd = parseFloat(document.getElementById('over-25-odd-input').value.replace(',', '.'));
-    const bttsYesOdd = parseFloat(document.getElementById('btts-yes-odd-input').value.replace(',', '.'));
     
     if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
         aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
@@ -343,19 +355,16 @@ const runAIAnalysis = () => {
             { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: homeOdd },
             { text: 'Döntetlen', prob: result.probs.drawProb, odds: drawOdd },
             { text: 'Vendég győzelem', prob: result.probs.awayProb, odds: awayOdd },
-            { text: 'Több mint 1.5 gól', prob: result.probs.over15Prob },
-            { text: 'Kevesebb mint 1.5 gól', prob: 1 - result.probs.over15Prob },
-            { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob, odds: over25Odd },
+            { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob },
             { text: 'Kevesebb mint 2.5 gól', prob: 1 - result.probs.over25Prob },
-            { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb, odds: bttsYesOdd },
-            { text: 'Mindkét csapat nem szerez gólt', prob: 1 - result.probs.bttsProb },
+            { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb },
         ];
 
         const rankedTips = potentialTips.map(tip => {
-            const value = tip.odds && !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : 0;
-            const kelly = tip.odds && !isNaN(tip.odds) ? ((tip.prob * (tip.odds - 1)) - (1 - tip.prob)) / (tip.odds - 1) : 0;
-            const score = tip.prob * (1 + value);
-            return { ...tip, value, kelly, score };
+            const value = tip.odds ? (tip.prob * tip.odds) - 1 : 0;
+            const risk = 1 - tip.prob;
+            const score = (tip.prob * (1 + value)) / (1 + risk * 0.5); // Risk-adjusted score
+            return { ...tip, value, score };
         }).sort((a, b) => b.score - a.score);
 
         const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(rankedTips[0]);
@@ -406,7 +415,6 @@ const runAIAnalysis = () => {
                                 <div class="text-xs text-sky-300 flex justify-center items-center gap-x-2">
                                     <span>P: ${probToPercent(tip.prob)}</span> 
                                     ${tip.value > 0.01 ? `<span>| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}
-                                    ${tip.kelly > 0 ? `<span>| Kelly: <span class="text-yellow-400">${(tip.kelly*100).toFixed(1)}%</span></span>` : ''}
                                 </div>
                             </div>
                         `).join('')}

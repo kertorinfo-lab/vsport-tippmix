@@ -64,6 +64,10 @@
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
+                             <div>
+                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
+                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
                         </div>
                         <!-- Right Side: Autofit -->
                         <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg space-y-2">
@@ -102,9 +106,11 @@ const awayOddInput = document.getElementById('away-odd-input');
 const rhoSlider = document.getElementById('rho-slider');
 const lambda3Slider = document.getElementById('lambda3-slider');
 const mixtureSlider = document.getElementById('mixture-slider');
+const marginSlider = document.getElementById('margin-slider');
 const rhoValue = document.getElementById('rho-value');
 const lambda3Value = document.getElementById('lambda3-value');
 const mixtureValue = document.getElementById('mixture-value');
+const marginValue = document.getElementById('margin-value');
 const aiResultDiv = document.getElementById('ai-result');
 const autofitFullBtn = document.getElementById('autofit-full-btn');
 const autofitRecentBtn = document.getElementById('autofit-recent-btn');
@@ -410,39 +416,46 @@ const runAIAnalysis = () => {
 };
 
 // --- INITIALIZATION AND EVENT LISTENERS ---
-document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+document.addEventListener('DOMContentLoaded', () => {
+    loadFromLocalStorage();
 
-// --- Event Listeners ---
-document.querySelectorAll('.ai-input').forEach(input => {
-    input.addEventListener('input', () => {
-        clearTimeout(analysisTimeout);
-        analysisTimeout = setTimeout(runAIAnalysis, 500);
+    // Attach all event listeners after DOM is loaded
+    document.querySelectorAll('.ai-input').forEach(input => {
+        input.addEventListener('input', () => {
+            clearTimeout(analysisTimeout);
+            analysisTimeout = setTimeout(runAIAnalysis, 500);
+        });
     });
-});
-rhoSlider.addEventListener('input', () => { rhoValue.textContent = parseFloat(rhoSlider.value).toFixed(2); });
-lambda3Slider.addEventListener('input', () => { lambda3Value.textContent = parseFloat(lambda3Slider.value).toFixed(2); });
-mixtureSlider.addEventListener('input', () => { mixtureValue.textContent = `${(parseFloat(mixtureSlider.value) * 100).toFixed(0)}%`; });
-marginSlider.addEventListener('input', () => { marginValue.textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
 
-document.getElementById('autofit-full-btn').addEventListener('click', () => runAutofit(logs));
-document.getElementById('autofit-recent-btn').addEventListener('click', () => runAutofit(logs.slice(0, 50)));
+    rhoSlider.addEventListener('input', () => { rhoValue.textContent = parseFloat(rhoSlider.value).toFixed(2); });
+    lambda3Slider.addEventListener('input', () => { lambda3Value.textContent = parseFloat(lambda3Slider.value).toFixed(2); });
+    mixtureSlider.addEventListener('input', () => { mixtureValue.textContent = `${(parseFloat(mixtureSlider.value) * 100).toFixed(0)}%`; });
+    marginSlider.addEventListener('input', () => { marginValue.textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
 
-driftCheckBtn.addEventListener('click', () => {
-    const result = AI_SYSTEM.DRIFT_MONITOR.run();
-    const color = result.level === 'warning' ? 'text-yellow-400' : result.level === 'success' ? 'text-green-400' : 'text-gray-400';
-    autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center ${color}`;
-    autofitStatus.textContent = result.message;
-    setTimeout(() => {
-        autofitStatus.textContent = '';
-        autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center text-green-400`;
-    }, 5000);
+    autofitFullBtn.addEventListener('click', () => runAutofit(logs));
+    autofitRecentBtn.addEventListener('click', () => runAutofit(logs.slice(0, 50)));
+
+    driftCheckBtn.addEventListener('click', () => {
+        const result = AI_SYSTEM.DRIFT_MONITOR.run();
+        const color = result.level === 'warning' ? 'text-yellow-400' : result.level === 'success' ? 'text-green-400' : 'text-gray-400';
+        autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center ${color}`;
+        autofitStatus.textContent = result.message;
+        setTimeout(() => {
+            autofitStatus.textContent = '';
+            autofitStatus.className = `text-xs font-semibold h-4 mt-1 text-center text-green-400`;
+        }, 5000);
+    });
+    
+    closeModalBtn.addEventListener('click', () => modalContainer.classList.add('hidden'));
+    modalContainer.addEventListener('click', (e) => { if (e.target === modalContainer) modalContainer.classList.add('hidden'); });
 });
+
 
 // --- Core Functions ---
 function runAutofit(dataSource) {
     autofitStatus.textContent = 'Illesztés...';
-    document.getElementById('autofit-full-btn').disabled = true;
-    document.getElementById('autofit-recent-btn').disabled = true;
+    autofitFullBtn.disabled = true;
+    autofitRecentBtn.disabled = true;
     setTimeout(() => {
         const result = AI_SYSTEM.AUTO_FIT.run(dataSource);
         if(result.error) {
@@ -455,8 +468,8 @@ function runAutofit(dataSource) {
             autofitStatus.textContent = "Sikeres illesztés!";
             runAIAnalysis();
         }
-        document.getElementById('autofit-full-btn').disabled = false;
-        document.getElementById('autofit-recent-btn').disabled = false;
+        autofitFullBtn.disabled = false;
+        autofitRecentBtn.disabled = false;
         setTimeout(() => autofitStatus.textContent = '', 4000);
     }, 100);
 }
@@ -535,6 +548,7 @@ function runCounterfactual(home, away, rho, l3c, mix, originalProbs) {
 function runSensitivityAnalysis(home, away, rho, l3c, mix) {
     const createRow = (p_rho, p_l3c) => {
         const res = AI_SYSTEM.GENERATIVE_CORE.run(home, away, p_rho, p_l3c, mix);
+        if (res.error) return `<tr><td colspan="4" class="text-center text-red-400 p-2">Hiba a számítás során</td></tr>`;
         return `
             <tr>
                 <td class="px-2 py-1 text-center font-mono">${p_rho.toFixed(2)}, ${p_l3c.toFixed(2)}</td>
@@ -570,8 +584,6 @@ function runSensitivityAnalysis(home, away, rho, l3c, mix) {
 
 // --- Local Storage Management & Modal Closing ---
 document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
-closeModalBtn.onclick = () => modalContainer.classList.add('hidden');
-modalContainer.onclick = (e) => { if (e.target === modalContainer) modalContainer.classList.add('hidden'); };
 
 </script>
 

@@ -608,8 +608,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderStatistics = () => {
         modalTitle.textContent = "Tipp Statisztika";
-        if (predictionsLog.length === 0) {
-            modalContent.innerHTML = "<p>Nincsenek rögzített tippek.</p>";
+        if (predictionsLog.length === 0 && logs.length === 0) {
+            modalContent.innerHTML = "<p>Nincsenek rögzített adatok.</p>";
             return;
         }
 
@@ -620,10 +620,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const accuracy = totalTips > 0 ? (correctTips / totalTips * 100).toFixed(1) : 0;
         const mainTipAccuracy = totalMainTips > 0 ? (correctMainTips / totalMainTips * 100).toFixed(1) : 0;
+        const totalMatches = logs.length;
 
         modalContent.innerHTML = `
             <div class="space-y-4 text-sm">
-                <div class="grid grid-cols-2 gap-4 text-center">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
                     <div class="bg-gray-700 p-3 rounded-lg">
                         <p class="text-gray-400">Fő Tipp Pontosság</p>
                         <p class="text-2xl font-bold text-sky-300">${mainTipAccuracy}%</p>
@@ -634,9 +635,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-2xl font-bold text-white">${accuracy}%</p>
                         <p class="text-xs text-gray-500">${correctTips} / ${totalTips}</p>
                     </div>
+                    <div class="bg-gray-700 p-3 rounded-lg col-span-2 md:col-span-1">
+                        <p class="text-gray-400">Adatbázis Mérete</p>
+                        <p class="text-2xl font-bold text-white">${totalMatches}</p>
+                        <p class="text-xs text-gray-500">Rögzített meccs</p>
+                    </div>
                 </div>
                 <div>
                     <h4 class="font-bold text-sky-300 mb-2">Legutóbbi 5 Fő Tipp</h4>
+                    ${totalMainTips > 0 ? `
                     <ul class="space-y-2">
                         ${predictionsLog.filter(p => p.isMainTip).slice(0, 5).map(p => `
                             <li class="flex justify-between items-center bg-gray-900 p-2 rounded-md">
@@ -648,6 +655,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </li>
                         `).join('')}
                     </ul>
+                    ` : '<p class="text-xs text-gray-400">Nincsenek rögzített fő tippek.</p>'}
                 </div>
             </div>
         `;
@@ -848,3 +856,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+

@@ -78,6 +78,10 @@
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
+                             <div>
+                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
+                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
                         </div>
                         <!-- Right Side: Autofit -->
                         <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg space-y-2">
@@ -112,335 +116,335 @@
     </div>
 
 <script>
-// --- APP ELEMENTS ---
-const homeTeamInput = document.getElementById('home-team-input');
-const awayTeamInput = document.getElementById('away-team-input');
-const homeOddInput = document.getElementById('home-odd-input');
-const drawOddInput = document.getElementById('draw-odd-input');
-const awayOddInput = document.getElementById('away-odd-input');
-const rhoSlider = document.getElementById('rho-slider');
-const lambda3Slider = document.getElementById('lambda3-slider');
-const mixtureSlider = document.getElementById('mixture-slider');
-const marginSlider = document.getElementById('margin-slider');
-const rhoValue = document.getElementById('rho-value');
-const lambda3Value = document.getElementById('lambda3-value');
-const mixtureValue = document.getElementById('mixture-value');
-const marginValue = document.getElementById('margin-value');
-const aiResultDiv = document.getElementById('ai-result');
-const autofitFullBtn = document.getElementById('autofit-full-btn');
-const autofitRecentBtn = document.getElementById('autofit-recent-btn');
-const driftCheckBtn = document.getElementById('drift-check-btn');
-const autofitStatus = document.getElementById('autofit-status');
-const modalContainer = document.getElementById('modal-container');
-const modalTitle = document.getElementById('modal-title');
-const modalContent = document.getElementById('modal-content');
-const closeModalBtn = document.getElementById('close-modal-btn');
-const openStatsBtn = document.getElementById('open-stats-btn');
-const logListDiv = document.getElementById('log-list');
+document.addEventListener('DOMContentLoaded', () => {
+    // --- APP ELEMENTS ---
+    const homeTeamInput = document.getElementById('home-team-input');
+    const awayTeamInput = document.getElementById('away-team-input');
+    const homeOddInput = document.getElementById('home-odd-input');
+    const drawOddInput = document.getElementById('draw-odd-input');
+    const awayOddInput = document.getElementById('away-odd-input');
+    const rhoSlider = document.getElementById('rho-slider');
+    const lambda3Slider = document.getElementById('lambda3-slider');
+    const mixtureSlider = document.getElementById('mixture-slider');
+    const marginSlider = document.getElementById('margin-slider');
+    const rhoValue = document.getElementById('rho-value');
+    const lambda3Value = document.getElementById('lambda3-value');
+    const mixtureValue = document.getElementById('mixture-value');
+    const marginValue = document.getElementById('margin-value');
+    const aiResultDiv = document.getElementById('ai-result');
+    const autofitFullBtn = document.getElementById('autofit-full-btn');
+    const autofitRecentBtn = document.getElementById('autofit-recent-btn');
+    const driftCheckBtn = document.getElementById('drift-check-btn');
+    const autofitStatus = document.getElementById('autofit-status');
+    const modalContainer = document.getElementById('modal-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const openStatsBtn = document.getElementById('open-stats-btn');
+    const logListDiv = document.getElementById('log-list');
 
-// --- APP STATE ---
-const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "London Ágyúk - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }, { id: 6, name: "Real Madrid - Barcelona", home: 1.80, draw: 3.90, away: 4.00, homeScore: 3, awayScore: 2, outcome: "homeWin" }, { id: 7, name: "Bayern München - Dortmund", home: 1.55, draw: 4.75, away: 5.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 8, name: "PSG - Lyon", home: 1.40, draw: 5.00, away: 7.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 9, name: "Inter - Milan", home: 2.00, draw: 3.50, away: 3.60, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 10, name: "Juventus - Roma", home: 1.90, draw: 3.40, away: 4.20, homeScore: 1, awayScore: 0, outcome: "homeWin" }, { id: 11, name: "Vörös Ördögök - Liverpool", home: 3.20, draw: 3.80, away: 2.10, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 12, name: "Fulham - Manchester Kék", home: 9.00, draw: 5.50, away: 1.30, homeScore: 0, awayScore: 4, outcome: "awayWin" }, { id: 13, name: "Tottenham - London Ágyúk", home: 2.90, draw: 3.60, away: 2.30, homeScore: 2, awayScore: 3, outcome: "awayWin" }, { id: 14, "name": "West Ham - Liverpool", "home": 4.5, "draw": 4.3, "away": 1.65, "homeScore": 2, "awayScore": 2, "outcome": "draw" }, { id: 15, "name": "Aston Villa - Chelsea", "home": 2.2, "draw": 3.6, "away": 3.0, "homeScore": 2, "awayScore": 2, "outcome": "draw" } ];
-let logs = [];
-let predictionsLog = [];
-let analysisTimeout;
+    // --- APP STATE ---
+    const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester Kék - Vörös Ördögök", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "London Ágyúk - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }, { id: 6, name: "Real Madrid - Barcelona", home: 1.80, draw: 3.90, away: 4.00, homeScore: 3, awayScore: 2, outcome: "homeWin" }, { id: 7, name: "Bayern München - Dortmund", home: 1.55, draw: 4.75, away: 5.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 8, name: "PSG - Lyon", home: 1.40, draw: 5.00, away: 7.00, homeScore: 4, awayScore: 1, outcome: "homeWin" }, { id: 9, name: "Inter - Milan", home: 2.00, draw: 3.50, away: 3.60, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 10, name: "Juventus - Roma", home: 1.90, draw: 3.40, away: 4.20, homeScore: 1, awayScore: 0, outcome: "homeWin" }, { id: 11, name: "Vörös Ördögök - Liverpool", home: 3.20, draw: 3.80, away: 2.10, homeScore: 2, awayScore: 2, outcome: "draw" }, { id: 12, name: "Fulham - Manchester Kék", home: 9.00, draw: 5.50, away: 1.30, homeScore: 0, awayScore: 4, outcome: "awayWin" }, { id: 13, name: "Tottenham - London Ágyúk", home: 2.90, draw: 3.60, away: 2.30, homeScore: 2, awayScore: 3, outcome: "awayWin" }, { id: 14, "name": "West Ham - Liverpool", "home": 4.5, "draw": 4.3, "away": 1.65, "homeScore": 2, "awayScore": 2, "outcome": "draw" }, { id: 15, "name": "Aston Villa - Chelsea", "home": 2.2, "draw": 3.6, "away": 3.0, "homeScore": 2, "awayScore": 2, "outcome": "draw" } ];
+    let logs = [];
+    let predictionsLog = [];
+    let analysisTimeout;
 
-// --- BIVARIATE POISSON MODEL (DIXON-COLES) ---
-const AI_SYSTEM = {
-    GENERATIVE_CORE: {
-        _factorials: [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880],
-        _factorial(n) { return this._factorials[n] || 1; },
-        
-        _bivariantPoisson(i, j, lambda1, lambda2, lambda3) {
-            let prob = 0;
-            const max_k = Math.min(i, j);
-            for (let k = 0; k <= max_k; k++) {
-                prob += (Math.pow(lambda1, i - k) / this._factorial(i - k)) * (Math.pow(lambda2, j - k) / this._factorial(j - k)) * (Math.pow(lambda3, k) / this._factorial(k));
-            }
-            return prob * Math.exp(-(lambda1 + lambda2 + lambda3));
-        },
-
-        _tau(i, j, rho) {
-            if (i === 0 && j === 0) return 1 - (rho * 2);
-            if (i === 1 && j === 0) return 1 + rho;
-            if (i === 0 && j === 1) return 1 + rho;
-            if (i === 1 && j === 1) return 1 - rho;
-            return 1;
-        },
-
-        run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, dataSource = logs) {
-            const MIN_LOGS = 5, MIN_TEAM_LOGS = 1;
-            if (dataSource.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
-
-            const homeLogs = dataSource.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase()));
-            const awayLogs = dataSource.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase()));
-            if (homeLogs.length < MIN_TEAM_LOGS || awayLogs.length < MIN_TEAM_LOGS) return { error: `Nincs elég adat a csapathoz (minimum ${MIN_TEAM_LOGS} meccs szükséges).` };
+    // --- BIVARIATE POISSON MODEL (DIXON-COLES) ---
+    const AI_SYSTEM = {
+        GENERATIVE_CORE: {
+            _factorials: [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880],
+            _factorial(n) { return this._factorials[n] || 1; },
             
-            const liga_home_avg = dataSource.reduce((s, l) => s + l.homeScore, 0) / dataSource.length;
-            const liga_away_avg = dataSource.reduce((s, l) => s + l.awayScore, 0) / dataSource.length;
-
-            const home_attack_str = (homeLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(homeTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / homeLogs.length) / liga_home_avg;
-            const away_attack_str = (awayLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(awayTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / awayLogs.length) / liga_away_avg;
-            const home_defense_str = (homeLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(homeTeam.toLowerCase()) ? l.awayScore : l.homeScore), 0) / homeLogs.length) / liga_away_avg;
-            const away_defense_str = (awayLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(awayTeam.toLowerCase()) ? l.awayScore : l.homeScore), 0) / awayLogs.length) / liga_away_avg;
-
-            const home_exp = home_attack_str * away_defense_str * liga_home_avg;
-            const away_exp = away_attack_str * home_defense_str * liga_away_avg;
-            
-            const lambda3 = Math.sqrt(home_exp * away_exp) * lambda3Corr;
-            const lambda1 = home_exp - lambda3;
-            const lambda2 = away_exp - lambda3;
-            if (lambda1 < 0 || lambda2 < 0) return { error: "Negatív lambda érték, a korreláció túl erős." };
-
-            let generativeProbs = { homeProb: 0, drawProb: 0, awayProb: 0, over15Prob: 0, over25Prob: 0, bttsProb: 0 };
-            let topScores = [];
-            let totalProb = 0;
-
-            for (let i = 0; i < 7; i++) {
-                for (let j = 0; j < 7; j++) {
-                    const prob = this._bivariantPoisson(i, j, lambda1, lambda2, lambda3) * this._tau(i, j, rho);
-                    totalProb += prob;
-                    topScores.push({ score: `${i}-${j}`, probability: prob });
+            _bivariantPoisson(i, j, lambda1, lambda2, lambda3) {
+                let prob = 0;
+                const max_k = Math.min(i, j);
+                for (let k = 0; k <= max_k; k++) {
+                    prob += (Math.pow(lambda1, i - k) / this._factorial(i - k)) * (Math.pow(lambda2, j - k) / this._factorial(j - k)) * (Math.pow(lambda3, k) / this._factorial(k));
                 }
+                return prob * Math.exp(-(lambda1 + lambda2 + lambda3));
+            },
+
+            _tau(i, j, rho) {
+                if (i === 0 && j === 0) return 1 - (rho * 2);
+                if (i === 1 && j === 0) return 1 + rho;
+                if (i === 0 && j === 1) return 1 + rho;
+                if (i === 1 && j === 1) return 1 - rho;
+                return 1;
+            },
+
+            run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, dataSource = logs) {
+                const MIN_LOGS = 5, MIN_TEAM_LOGS = 1;
+                if (dataSource.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
+
+                const homeLogs = dataSource.filter(l => l.name.toLowerCase().includes(homeTeam.toLowerCase()));
+                const awayLogs = dataSource.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase()));
+                if (homeLogs.length < MIN_TEAM_LOGS || awayLogs.length < MIN_TEAM_LOGS) return { error: `Nincs elég adat a csapathoz (minimum ${MIN_TEAM_LOGS} meccs szükséges).` };
+                
+                const liga_home_avg = dataSource.reduce((s, l) => s + l.homeScore, 0) / dataSource.length;
+                const liga_away_avg = dataSource.reduce((s, l) => s + l.awayScore, 0) / dataSource.length;
+
+                const home_attack_str = (homeLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(homeTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / homeLogs.length) / liga_home_avg;
+                const away_attack_str = (awayLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(awayTeam.toLowerCase()) ? l.homeScore : l.awayScore), 0) / awayLogs.length) / liga_away_avg;
+                const home_defense_str = (homeLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(homeTeam.toLowerCase()) ? l.awayScore : l.homeScore), 0) / homeLogs.length) / liga_away_avg;
+                const away_defense_str = (awayLogs.reduce((s, l) => s + (l.name.toLowerCase().startsWith(awayTeam.toLowerCase()) ? l.awayScore : l.homeScore), 0) / awayLogs.length) / liga_away_avg;
+
+                const home_exp = home_attack_str * away_defense_str * liga_home_avg;
+                const away_exp = away_attack_str * home_defense_str * liga_away_avg;
+                
+                const lambda3 = Math.sqrt(home_exp * away_exp) * lambda3Corr;
+                const lambda1 = home_exp - lambda3;
+                const lambda2 = away_exp - lambda3;
+                if (lambda1 < 0 || lambda2 < 0) return { error: "Negatív lambda érték, a korreláció túl erős." };
+
+                let generativeProbs = { homeProb: 0, drawProb: 0, awayProb: 0, over15Prob: 0, over25Prob: 0, bttsProb: 0 };
+                let topScores = [];
+                let totalProb = 0;
+
+                for (let i = 0; i < 7; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        const prob = this._bivariantPoisson(i, j, lambda1, lambda2, lambda3) * this._tau(i, j, rho);
+                        totalProb += prob;
+                        topScores.push({ score: `${i}-${j}`, probability: prob });
+                    }
+                }
+                
+                topScores.forEach(s => s.probability /= totalProb);
+                
+                topScores.forEach(s => {
+                    const [i, j] = s.score.split('-').map(Number);
+                    if (i > j) generativeProbs.homeProb += s.probability;
+                    else if (j > i) generativeProbs.awayProb += s.probability;
+                    else generativeProbs.drawProb += s.probability;
+                    if (i + j > 1.5) generativeProbs.over15Prob += s.probability;
+                    if (i + j > 2.5) generativeProbs.over25Prob += s.probability;
+                    if (i > 0 && j > 0) generativeProbs.bttsProb += s.probability;
+                });
+                
+                const relevantLogs = [...homeLogs, ...awayLogs];
+                const empiricalProbs = {
+                    homeProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length : 0,
+                    drawProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length : 0,
+                    awayProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length : 0,
+                    over15Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 1.5).length / relevantLogs.length : 0,
+                    over25Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length : 0,
+                    bttsProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length : 0
+                };
+                
+                const finalProbs = {};
+                for (const key in generativeProbs) {
+                    finalProbs[key] = (1 - mixtureRatio) * generativeProbs[key] + mixtureRatio * empiricalProbs[key];
+                }
+
+                topScores.sort((a, b) => b.probability - a.probability);
+                
+                return {
+                    strengths: { home_attack_str, away_attack_str, home_defense_str, away_defense_str },
+                    params: { lambda1, lambda2, lambda3, rho },
+                    probs: finalProbs,
+                    topScores: topScores.slice(0, 3)
+                };
             }
-            
-            topScores.forEach(s => s.probability /= totalProb);
-            
-            topScores.forEach(s => {
-                const [i, j] = s.score.split('-').map(Number);
-                if (i > j) generativeProbs.homeProb += s.probability;
-                else if (j > i) generativeProbs.awayProb += s.probability;
-                else generativeProbs.drawProb += s.probability;
-                if (i + j > 1.5) generativeProbs.over15Prob += s.probability;
-                if (i + j > 2.5) generativeProbs.over25Prob += s.probability;
-                if (i > 0 && j > 0) generativeProbs.bttsProb += s.probability;
-            });
-            
-            const relevantLogs = [...homeLogs, ...awayLogs];
-            const empiricalProbs = {
-                homeProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length : 0,
-                drawProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length : 0,
-                awayProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length : 0,
-                over15Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 1.5).length / relevantLogs.length : 0,
-                over25Prob: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length : 0,
-                bttsProb: relevantLogs.length > 0 ? relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length : 0
-            };
-            
-            const finalProbs = {};
-            for (const key in generativeProbs) {
-                finalProbs[key] = (1 - mixtureRatio) * generativeProbs[key] + mixtureRatio * empiricalProbs[key];
+        },
+
+        ADVERSARIAL_CHECKER: {
+            run(bestTip) {
+                if (!bestTip || !bestTip.value) return null;
+                if (bestTip.prob < 0.3 && bestTip.value > 1.0) { 
+                    return { message: `Extrém magas érték (${(bestTip.value*100).toFixed(0)}%) egy alacsony valószínűségű kimenetelen. Ez anomáliára utalhat.` };
+                }
+                return null;
             }
+        },
 
-            topScores.sort((a, b) => b.probability - a.probability);
-            
-            return {
-                strengths: { home_attack_str, away_attack_str, home_defense_str, away_defense_str },
-                params: { lambda1, lambda2, lambda3, rho },
-                probs: finalProbs,
-                topScores: topScores.slice(0, 3)
-            };
-        }
-    },
-
-    ADVERSARIAL_CHECKER: {
-        run(bestTip) {
-            if (!bestTip || !bestTip.value) return null;
-            if (bestTip.prob < 0.3 && bestTip.value > 1.0) { 
-                return { message: `Extrém magas érték (${(bestTip.value*100).toFixed(0)}%) egy alacsony valószínűségű kimenetelen. Ez anomáliára utalhat.` };
+        DYNAMIC_MARGIN: {
+            run(probs) {
+                const uncertainty = 1 - Math.max(probs.homeProb, probs.drawProb, probs.awayProb);
+                const suggestedMargin = 0.02 + (uncertainty * 0.1);
+                return { suggestedMargin: Math.min(suggestedMargin, 0.15) };
             }
-            return null;
-        }
-    },
+        },
 
-    DYNAMIC_MARGIN: {
-        run(probs) {
-            const uncertainty = 1 - Math.max(probs.homeProb, probs.drawProb, probs.awayProb);
-            const suggestedMargin = 0.02 + (uncertainty * 0.1);
-            return { suggestedMargin: Math.min(suggestedMargin, 0.15) };
-        }
-    },
-
-    DRIFT_MONITOR: {
-        run() {
-            if (logs.length < 40) return { message: "Nincs elég adat a drift elemzéshez (min. 40 meccs).", level: 'info' };
-            const recentLogs = logs.slice(0, 20);
-            const historicalLogs = logs.slice(20);
-            const calcAvgGoals = (logSet) => logSet.reduce((sum, l) => sum + l.homeScore + l.awayScore, 0) / logSet.length;
-            const drift = (calcAvgGoals(recentLogs) - calcAvgGoals(historicalLogs)) / calcAvgGoals(historicalLogs);
-            if (Math.abs(drift) > 0.20) {
-                 return { message: `Figyelem: Jelentős trendváltozás (${(drift*100).toFixed(0)}%) a gólokban!`, level: 'warning' };
+        DRIFT_MONITOR: {
+            run() {
+                if (logs.length < 40) return { message: "Nincs elég adat a drift elemzéshez (min. 40 meccs).", level: 'info' };
+                const recentLogs = logs.slice(0, 20);
+                const historicalLogs = logs.slice(20);
+                const calcAvgGoals = (logSet) => logSet.reduce((sum, l) => sum + l.homeScore + l.awayScore, 0) / logSet.length;
+                const drift = (calcAvgGoals(recentLogs) - calcAvgGoals(historicalLogs)) / calcAvgGoals(historicalLogs);
+                if (Math.abs(drift) > 0.20) {
+                     return { message: `Figyelem: Jelentős trendváltozás (${(drift*100).toFixed(0)}%) a gólokban!`, level: 'warning' };
+                }
+                return { message: "Nem észlelhető jelentős trendváltozás.", level: 'success' };
             }
-            return { message: "Nem észlelhető jelentős trendváltozás.", level: 'success' };
-        }
-    },
+        },
 
-    AUTO_FIT: {
-        run(dataSource) {
-            if (dataSource.length < 20) return { error: `Az automatikus illesztéshez legalább 20 meccs szükséges.`};
+        AUTO_FIT: {
+            run(dataSource) {
+                if (dataSource.length < 20) return { error: `Az automatikus illesztéshez legalább 20 meccs szükséges.`};
 
-            const empirical = {
-                home: dataSource.filter(l=>l.homeScore > l.awayScore).length / dataSource.length,
-                draw: dataSource.filter(l=>l.homeScore === l.awayScore).length / dataSource.length,
-                over25: dataSource.filter(l=>l.homeScore + l.awayScore > 2.5).length / dataSource.length
-            };
+                const empirical = {
+                    home: dataSource.filter(l=>l.homeScore > l.awayScore).length / dataSource.length,
+                    draw: dataSource.filter(l=>l.homeScore === l.awayScore).length / dataSource.length,
+                    over25: dataSource.filter(l=>l.homeScore + l.awayScore > 2.5).length / dataSource.length
+                };
 
-            let bestParams = { rho: 0, lambda3Corr: 0 };
-            let minError = Infinity;
+                let bestParams = { rho: 0, lambda3Corr: 0 };
+                let minError = Infinity;
 
-            for (let rho = -0.5; rho <= 0.5; rho += 0.1) {
-                for (let l3c = 0; l3c <= 0.5; l3c += 0.1) {
-                    let modelProbs = { home: 0, draw: 0, over25: 0 }, count = 0;
-                    
-                    for(const log of dataSource) {
-                        const [h_team, a_team] = log.name.split(' - ');
-                        const res = AI_SYSTEM.GENERATIVE_CORE.run(h_team, a_team, rho, l3c, 0, dataSource);
-                        if(res && !res.error) {
-                            modelProbs.home += res.probs.homeProb;
-                            modelProbs.draw += res.probs.drawProb;
-                            modelProbs.over25 += res.probs.over25Prob;
-                            count++;
+                for (let rho = -0.5; rho <= 0.5; rho += 0.1) {
+                    for (let l3c = 0; l3c <= 0.5; l3c += 0.1) {
+                        let modelProbs = { home: 0, draw: 0, over25: 0 }, count = 0;
+                        
+                        for(const log of dataSource) {
+                            const [h_team, a_team] = log.name.split(' - ');
+                            const res = AI_SYSTEM.GENERATIVE_CORE.run(h_team, a_team, rho, l3c, 0, dataSource);
+                            if(res && !res.error) {
+                                modelProbs.home += res.probs.homeProb;
+                                modelProbs.draw += res.probs.drawProb;
+                                modelProbs.over25 += res.probs.over25Prob;
+                                count++;
+                            }
+                        }
+                        
+                        if (count > 0) {
+                            modelProbs.home /= count; modelProbs.draw /= count; modelProbs.over25 /= count;
+                            const error = Math.pow(modelProbs.home - empirical.home, 2) + Math.pow(modelProbs.draw - empirical.draw, 2) + Math.pow(modelProbs.over25 - empirical.over25, 2);
+                            if (error < minError) { minError = error; bestParams = { rho, lambda3Corr: l3c }; }
                         }
                     }
-                    
-                    if (count > 0) {
-                        modelProbs.home /= count; modelProbs.draw /= count; modelProbs.over25 /= count;
-                        const error = Math.pow(modelProbs.home - empirical.home, 2) + Math.pow(modelProbs.draw - empirical.draw, 2) + Math.pow(modelProbs.over25 - empirical.over25, 2);
-                        if (error < minError) { minError = error; bestParams = { rho, lambda3Corr: l3c }; }
-                    }
                 }
+                return bestParams;
             }
-            return bestParams;
         }
-    }
-};
+    };
 
-// --- MAIN APP LOGIC AND UI FUNCTIONS ---
-const saveToLocalStorage = () => {
-    localStorage.setItem('vsportAdminLogs', JSON.stringify(logs));
-};
+    // --- MAIN APP LOGIC AND UI FUNCTIONS ---
+    const saveToLocalStorage = () => {
+        localStorage.setItem('vsportAdminLogs', JSON.stringify(logs));
+    };
 
-const loadFromLocalStorage = () => {
-    const storedLogs = localStorage.getItem('vsportAdminLogs');
-    if (storedLogs) {
-        logs = JSON.parse(storedLogs);
-    } else {
-        logs = initialLogs; // Load sample data if nothing is in storage
-    }
-};
-
-const runAIAnalysis = () => {
-    const homeTeam = homeTeamInput.value.trim();
-    const awayTeam = awayTeamInput.value.trim();
-    const homeOdd = parseFloat(homeOddInput.value.replace(',', '.'));
-    const drawOdd = parseFloat(drawOddInput.value.replace(',', '.'));
-    const awayOdd = parseFloat(awayOddInput.value.replace(',', '.'));
-    const rho = parseFloat(rhoSlider.value);
-    const lambda3Corr = parseFloat(lambda3Slider.value);
-    const mixtureRatio = parseFloat(mixtureSlider.value);
-    
-    if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
-        aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
-    }
-    
-    aiResultDiv.innerHTML = `<div class="p-4"><div class="flex items-center justify-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Számítás...</span></div></div>`;
-
-    setTimeout(() => {
-        const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio);
-
-        if (result.error) {
-            aiResultDiv.innerHTML = `<div class="p-4 text-center text-red-400 font-semibold">${result.error}</div>`;
-            return;
+    const loadFromLocalStorage = () => {
+        const storedLogs = localStorage.getItem('vsportAdminLogs');
+        if (storedLogs) {
+            logs = JSON.parse(storedLogs);
+        } else {
+            logs = initialLogs; // Load sample data if nothing is in storage
         }
+    };
 
-        const potentialTips = [
-            { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: homeOdd },
-            { text: 'Döntetlen', prob: result.probs.drawProb, odds: drawOdd },
-            { text: 'Vendég győzelem', prob: result.probs.awayProb, odds: awayOdd },
-            { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob },
-            { text: 'Kevesebb mint 2.5 gól', prob: 1 - result.probs.over25Prob },
-            { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb },
-        ];
-
-        const rankedTips = potentialTips.map(tip => {
-            const value = tip.odds ? (tip.prob * tip.odds) - 1 : 0;
-            const risk = 1 - tip.prob;
-            const score = (tip.prob * (1 + value)) / (1 + risk * 0.5); // Risk-adjusted score
-            return { ...tip, value, score };
-        }).sort((a, b) => b.score - a.score);
-
-        const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(rankedTips[0]);
-        const dynamicMargin = AI_SYSTEM.DYNAMIC_MARGIN.run(result.probs);
+    const runAIAnalysis = () => {
+        const homeTeam = homeTeamInput.value.trim();
+        const awayTeam = awayTeamInput.value.trim();
+        const homeOdd = parseFloat(homeOddInput.value.replace(',', '.'));
+        const drawOdd = parseFloat(drawOddInput.value.replace(',', '.'));
+        const awayOdd = parseFloat(awayOddInput.value.replace(',', '.'));
+        const rho = parseFloat(rhoSlider.value);
+        const lambda3Corr = parseFloat(lambda3Slider.value);
+        const mixtureRatio = parseFloat(mixtureSlider.value);
         
-        const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
-        
-        const cardHTML = `<div class="p-4 poisson-card rounded-lg text-left space-y-4">
-                ${adversarialWarning ? `<div class="p-3 bg-red-500/20 border border-red-500 rounded-lg text-center"><p class="text-sm font-bold text-red-300">Kockázati Figyelmeztetés</p><p class="text-xs text-red-400 mt-1">${adversarialWarning.message}</p></div>` : ''}
-                <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Bemeneti Erősségek</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-sm">
-                        <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Támadó</p><p class="font-bold text-white">${result.strengths.home_attack_str.toFixed(2)}</p></div>
-                        <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Védekező</p><p class="font-bold text-white">${result.strengths.home_defense_str.toFixed(2)}</p></div>
-                        <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${awayTeam} Támadó</p><p class="font-bold text-white">${result.strengths.away_attack_str.toFixed(2)}</p></div>
-                        <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${awayTeam} Védekező</p><p class="font-bold text-white">${result.strengths.away_defense_str.toFixed(2)}</p></div>
+        if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
+            aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
+        }
+        
+        aiResultDiv.innerHTML = `<div class="p-4"><div class="flex items-center justify-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Számítás...</span></div></div>`;
+
+        setTimeout(() => {
+            const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio);
+
+            if (result.error) {
+                aiResultDiv.innerHTML = `<div class="p-4 text-center text-red-400 font-semibold">${result.error}</div>`;
+                return;
+            }
+
+            const potentialTips = [
+                { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: homeOdd },
+                { text: 'Döntetlen', prob: result.probs.drawProb, odds: drawOdd },
+                { text: 'Vendég győzelem', prob: result.probs.awayProb, odds: awayOdd },
+                { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob },
+                { text: 'Kevesebb mint 2.5 gól', prob: 1 - result.probs.over25Prob },
+                { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb },
+            ];
+
+            const rankedTips = potentialTips.map(tip => {
+                const value = tip.odds ? (tip.prob * tip.odds) - 1 : 0;
+                const risk = 1 - tip.prob;
+                const score = (tip.prob * (1 + value)) / (1 + risk * 0.5); // Risk-adjusted score
+                return { ...tip, value, score };
+            }).sort((a, b) => b.score - a.score);
+
+            const adversarialWarning = AI_SYSTEM.ADVERSARIAL_CHECKER.run(rankedTips[0]);
+            const dynamicMargin = AI_SYSTEM.DYNAMIC_MARGIN.run(result.probs);
+            
+            const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
+            
+            const cardHTML = `<div class="p-4 poisson-card rounded-lg text-left space-y-4">
+                    ${adversarialWarning ? `<div class="p-3 bg-red-500/20 border border-red-500 rounded-lg text-center"><p class="text-sm font-bold text-red-300">Kockázati Figyelmeztetés</p><p class="text-xs text-red-400 mt-1">${adversarialWarning.message}</p></div>` : ''}
+                    <div>
+                        <h4 class="font-bold text-sky-300 mb-2">Bemeneti Erősségek</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-sm">
+                            <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Támadó</p><p class="font-bold text-white">${result.strengths.home_attack_str.toFixed(2)}</p></div>
+                            <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${homeTeam} Védekező</p><p class="font-bold text-white">${result.strengths.home_defense_str.toFixed(2)}</p></div>
+                            <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${awayTeam} Támadó</p><p class="font-bold text-white">${result.strengths.away_attack_str.toFixed(2)}</p></div>
+                            <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">${awayTeam} Védekező</p><p class="font-bold text-white">${result.strengths.away_defense_str.toFixed(2)}</p></div>
+                        </div>
                     </div>
-                </div>
-                 <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek (${(mixtureRatio*100).toFixed(0)}% Preset Boost)</h4>
-                     <div class="grid grid-cols-3 gap-2 text-center text-sm">
-                        <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Hazai</p><p class="font-bold text-white">${probToPercent(result.probs.homeProb)}</p></div>
-                        <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Döntetlen</p><p class="font-bold text-white">${probToPercent(result.probs.drawProb)}</p></div>
-                        <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Vendég</p><p class="font-bold text-white">${probToPercent(result.probs.awayProb)}</p></div>
-                     </div>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés & Dinamikus Margin</h4>
-                    <div class="bg-gray-900/50 p-3 rounded-lg text-center text-sm">
-                        <p>Javasolt alap margin: <span class="font-bold text-sky-300">${(dynamicMargin.suggestedMargin*100).toFixed(1)}%</span></p>
+                     <div>
+                        <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek (${(mixtureRatio*100).toFixed(0)}% Preset Boost)</h4>
+                         <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                            <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Hazai</p><p class="font-bold text-white">${probToPercent(result.probs.homeProb)}</p></div>
+                            <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Döntetlen</p><p class="font-bold text-white">${probToPercent(result.probs.drawProb)}</p></div>
+                            <div class="bg-gray-900 p-2 rounded-md flex flex-col justify-center items-center"><p class="text-xs text-gray-400">Vendég</p><p class="font-bold text-white">${probToPercent(result.probs.awayProb)}</p></div>
+                         </div>
                     </div>
-                </div>
-                 <div>
-                    <h4 class="text-md font-semibold text-sky-300 mb-2">Explainability & Audit</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="run-cf-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-700">Kontrafaktuális</button>
-                        <button id="run-sensitivity-sim" class="w-full bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-800">Érzékenység</button>
+                    <div>
+                        <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés & Dinamikus Margin</h4>
+                        <div class="bg-gray-900/50 p-3 rounded-lg text-center text-sm">
+                            <p>Javasolt alap margin: <span class="font-bold text-sky-300">${(dynamicMargin.suggestedMargin*100).toFixed(1)}%</span></p>
+                        </div>
                     </div>
-                    <button id="run-mc-sim" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-purple-700 mt-2">Monte Carlo Vizualizáció</button>
-                    <canvas id="heatmap-canvas" class="mt-2 rounded-lg bg-gray-900/50" width="400" height="400" style="display:none;"></canvas>
-                </div>
-                <div>
-                    <h4 class="text-md font-semibold text-sky-300 mb-1">Ajánlott Portfólió (Kockázattal Súlyozva)</h4>
-                    <div class="space-y-1">
-                        ${rankedTips.slice(0,3).map((tip, index) => `
-                            <div class="bg-gray-900 rounded-md p-3 text-center ${index === 0 ? 'border-2 border-sky-400' : ''}">
-                                <p class="text-md font-bold text-white">${tip.text}</p>
-                                <div class="text-xs text-sky-300 flex justify-center items-center gap-x-2">
-                                    <span>P: ${probToPercent(tip.prob)}</span> 
-                                    ${tip.value > 0.01 ? `<span>| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}
+                     <div>
+                        <h4 class="text-md font-semibold text-sky-300 mb-2">Explainability & Audit</h4>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="run-cf-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-700">Kontrafaktuális</button>
+                            <button id="run-sensitivity-sim" class="w-full bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-800">Érzékenység</button>
+                        </div>
+                        <button id="run-mc-sim" class="w-full bg-purple-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-purple-700 mt-2">Monte Carlo Vizualizáció</button>
+                        <canvas id="heatmap-canvas" class="mt-2 rounded-lg bg-gray-900/50" width="400" height="400" style="display:none;"></canvas>
+                    </div>
+                    <div>
+                        <h4 class="text-md font-semibold text-sky-300 mb-1">Ajánlott Portfólió (Kockázattal Súlyozva)</h4>
+                        <div class="space-y-1">
+                            ${rankedTips.slice(0,3).map((tip, index) => `
+                                <div class="bg-gray-900 rounded-md p-3 text-center ${index === 0 ? 'border-2 border-sky-400' : ''}">
+                                    <p class="text-md font-bold text-white">${tip.text}</p>
+                                    <div class="text-xs text-sky-300 flex justify-center items-center gap-x-2">
+                                        <span>P: ${probToPercent(tip.prob)}</span> 
+                                        ${tip.value > 0.01 ? `<span>| Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
-            </div>`;
-                
-        aiResultDiv.innerHTML = cardHTML;
+                </div>`;
+                    
+            aiResultDiv.innerHTML = cardHTML;
 
-        document.getElementById('run-mc-sim').addEventListener('click', () => {
-            document.getElementById('heatmap-canvas').style.display = 'block';
-            runMonteCarlo(result.params, document.getElementById('heatmap-canvas'));
-        });
-        document.getElementById('run-cf-sim').addEventListener('click', () => {
-            runCounterfactual(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, result.probs);
-        });
-        document.getElementById('run-sensitivity-sim').addEventListener('click', () => {
-             runSensitivityAnalysis(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio);
-        });
+            document.getElementById('run-mc-sim').addEventListener('click', () => {
+                document.getElementById('heatmap-canvas').style.display = 'block';
+                runMonteCarlo(result.params, document.getElementById('heatmap-canvas'));
+            });
+            document.getElementById('run-cf-sim').addEventListener('click', () => {
+                runCounterfactual(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio, result.probs);
+            });
+            document.getElementById('run-sensitivity-sim').addEventListener('click', () => {
+                 runSensitivityAnalysis(homeTeam, awayTeam, rho, lambda3Corr, mixtureRatio);
+            });
 
-    }, 100);
-};
+        }, 100);
+    };
 
-// --- INITIALIZATION AND EVENT LISTENERS ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadFromLocalStorage();
+    // --- INITIALIZATION AND EVENT LISTENERS ---
+    loadFromLocalStorage();
 
     // Attach all event listeners after DOM is loaded
     document.querySelectorAll('.ai-input').forEach(input => {
@@ -471,143 +475,140 @@ document.addEventListener('DOMContentLoaded', () => {
     
     closeModalBtn.addEventListener('click', () => modalContainer.classList.add('hidden'));
     modalContainer.addEventListener('click', (e) => { if (e.target === modalContainer) modalContainer.classList.add('hidden'); });
-});
+    openStatsBtn.addEventListener('click', () => {
+        // Implement stats modal opening logic here
+    });
 
+    // --- Core Functions ---
+    function runAutofit(dataSource) {
+        autofitStatus.textContent = 'Illesztés...';
+        autofitFullBtn.disabled = true;
+        autofitRecentBtn.disabled = true;
+        setTimeout(() => {
+            const result = AI_SYSTEM.AUTO_FIT.run(dataSource);
+            if(result.error) {
+                autofitStatus.textContent = result.error;
+            } else {
+                rhoSlider.value = result.rho.toFixed(2);
+                lambda3Slider.value = result.lambda3Corr.toFixed(2);
+                rhoValue.textContent = result.rho.toFixed(2);
+                lambda3Value.textContent = result.lambda3Corr.toFixed(2);
+                autofitStatus.textContent = "Sikeres illesztés!";
+                runAIAnalysis();
+            }
+            autofitFullBtn.disabled = false;
+            autofitRecentBtn.disabled = false;
+            setTimeout(() => autofitStatus.textContent = '', 4000);
+        }, 100);
+    }
 
-// --- Core Functions ---
-function runAutofit(dataSource) {
-    autofitStatus.textContent = 'Illesztés...';
-    autofitFullBtn.disabled = true;
-    autofitRecentBtn.disabled = true;
-    setTimeout(() => {
-        const result = AI_SYSTEM.AUTO_FIT.run(dataSource);
-        if(result.error) {
-            autofitStatus.textContent = result.error;
-        } else {
-            rhoSlider.value = result.rho.toFixed(2);
-            lambda3Slider.value = result.lambda3Corr.toFixed(2);
-            rhoValue.textContent = result.rho.toFixed(2);
-            lambda3Value.textContent = result.lambda3Corr.toFixed(2);
-            autofitStatus.textContent = "Sikeres illesztés!";
-            runAIAnalysis();
+    function runMonteCarlo({lambda1, lambda2, lambda3}, canvas) {
+        const ctx = canvas.getContext('2d');
+        const N_SIMS = 10000;
+        const scores = {};
+
+        function getPoisson(lambda) {
+            let L = Math.exp(-lambda); let k = 0, p = 1;
+            do { k++; p *= Math.random(); } while (p > L);
+            return k - 1;
         }
-        autofitFullBtn.disabled = false;
-        autofitRecentBtn.disabled = false;
-        setTimeout(() => autofitStatus.textContent = '', 4000);
-    }, 100);
-}
 
-function runMonteCarlo({lambda1, lambda2, lambda3}, canvas) {
-    const ctx = canvas.getContext('2d');
-    const N_SIMS = 10000;
-    const scores = {};
-
-    function getPoisson(lambda) {
-        let L = Math.exp(-lambda); let k = 0, p = 1;
-        do { k++; p *= Math.random(); } while (p > L);
-        return k - 1;
+        for(let i = 0; i < N_SIMS; i++) {
+            const h_goals = getPoisson(lambda1) + getPoisson(lambda3);
+            const a_goals = getPoisson(lambda2) + getPoisson(lambda3);
+            scores[`${h_goals}-${a_goals}`] = (scores[`${h_goals}-${a_goals}`] || 0) + 1;
+        }
+        drawHeatmap(scores, ctx, canvas.width, canvas.height);
     }
 
-    for(let i = 0; i < N_SIMS; i++) {
-        const h_goals = getPoisson(lambda1) + getPoisson(lambda3);
-        const a_goals = getPoisson(lambda2) + getPoisson(lambda3);
-        scores[`${h_goals}-${a_goals}`] = (scores[`${h_goals}-${a_goals}`] || 0) + 1;
-    }
-    drawHeatmap(scores, ctx, canvas.width, canvas.height);
-}
+    function drawHeatmap(scores, ctx, width, height) {
+        const GRID_SIZE = 7;
+        const cellWidth = width / GRID_SIZE;
+        const cellHeight = height / GRID_SIZE;
+        let maxCount = 0;
+        for (const key in scores) { if (scores[key] > maxCount) maxCount = scores[key]; }
+        
+        ctx.clearRect(0, 0, width, height);
+        ctx.font = `${cellWidth / 3.5}px Inter`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-function drawHeatmap(scores, ctx, width, height) {
-    const GRID_SIZE = 7;
-    const cellWidth = width / GRID_SIZE;
-    const cellHeight = height / GRID_SIZE;
-    let maxCount = 0;
-    for (const key in scores) { if (scores[key] > maxCount) maxCount = scores[key]; }
-    
-    ctx.clearRect(0, 0, width, height);
-    ctx.font = `${cellWidth / 3.5}px Inter`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 0; i < GRID_SIZE; i++) {
-        for (let j = 0; j < GRID_SIZE; j++) {
-            const key = `${i}-${j}`;
-            const count = scores[key] || 0;
-            const alpha = Math.sqrt(count / maxCount);
-            ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
-            ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
-            if(count > 0) {
-                ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
-                ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+        for (let i = 0; i < GRID_SIZE; i++) {
+            for (let j = 0; j < GRID_SIZE; j++) {
+                const key = `${i}-${j}`;
+                const count = scores[key] || 0;
+                const alpha = Math.sqrt(count / maxCount);
+                ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
+                ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+                if(count > 0) {
+                    ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
+                    ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+                }
             }
         }
     }
-}
 
-function runCounterfactual(home, away, rho, l3c, mix, originalProbs) {
-    const cfRho = rho + 0.1;
-    const result = AI_SYSTEM.GENERATIVE_CORE.run(home, away, cfRho, l3c, mix);
-    if(result.error) return;
+    function runCounterfactual(home, away, rho, l3c, mix, originalProbs) {
+        const cfRho = rho + 0.1;
+        const result = AI_SYSTEM.GENERATIVE_CORE.run(home, away, cfRho, l3c, mix);
+        if(result.error) return;
 
-    const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
-    const formatDiff = (newVal, oldVal) => {
-        const diff = (newVal - oldVal) * 100;
-        const color = diff > 0 ? 'text-green-400' : 'text-red-400';
-        return `<span class="${color}">(${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)</span>`;
-    };
+        const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
+        const formatDiff = (newVal, oldVal) => {
+            const diff = (newVal - oldVal) * 100;
+            const color = diff > 0 ? 'text-green-400' : 'text-red-400';
+            return `<span class="${color}">(${diff > 0 ? '+' : ''}${diff.toFixed(1)}%)</span>`;
+        };
 
-    modalTitle.textContent = 'Kontrafaktuális Szimuláció';
-    modalContent.innerHTML = `
-        <p class="text-sm text-gray-300 mb-4">Szimuláció, ha ρ értéke ${rho.toFixed(2)}-ról ${cfRho.toFixed(2)}-ra változna:</p>
-        <div class="space-y-2">
-            <div class="flex justify-between text-sm"><span class="text-gray-400">Hazai Győzelem:</span> <span>${probToPercent(result.probs.homeProb)} ${formatDiff(result.probs.homeProb, originalProbs.homeProb)}</span></div>
-            <div class="flex justify-between text-sm"><span class="text-gray-400">Döntetlen:</span> <span>${probToPercent(result.probs.drawProb)} ${formatDiff(result.probs.drawProb, originalProbs.drawProb)}</span></div>
-            <div class="flex justify-between text-sm"><span class="text-gray-400">Vendég Győzelem:</span> <span>${probToPercent(result.probs.awayProb)} ${formatDiff(result.probs.awayProb, originalProbs.awayProb)}</span></div>
-            <div class="flex justify-between text-sm"><span class="text-gray-400">Over 2.5:</span> <span>${probToPercent(result.probs.over25Prob)} ${formatDiff(result.probs.over25Prob, originalProbs.over25Prob)}</span></div>
-        </div>
-    `;
-    modalContainer.classList.remove('hidden');
-}
-
-function runSensitivityAnalysis(home, away, rho, l3c, mix) {
-    const createRow = (p_rho, p_l3c) => {
-        const res = AI_SYSTEM.GENERATIVE_CORE.run(home, away, p_rho, p_l3c, mix);
-        if (res.error) return `<tr><td colspan="4" class="text-center text-red-400 p-2">Hiba a számítás során</td></tr>`;
-        return `
-            <tr>
-                <td class="px-2 py-1 text-center font-mono">${p_rho.toFixed(2)}, ${p_l3c.toFixed(2)}</td>
-                <td class="px-2 py-1 text-center">${(res.probs.homeProb*100).toFixed(1)}%</td>
-                <td class="px-2 py-1 text-center">${(res.probs.drawProb*100).toFixed(1)}%</td>
-                <td class="px-2 py-1 text-center">${(res.probs.over25Prob*100).toFixed(1)}%</td>
-            </tr>
+        modalTitle.textContent = 'Kontrafaktuális Szimuláció';
+        modalContent.innerHTML = `
+            <p class="text-sm text-gray-300 mb-4">Szimuláció, ha ρ értéke ${rho.toFixed(2)}-ról ${cfRho.toFixed(2)}-ra változna:</p>
+            <div class="space-y-2">
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Hazai Győzelem:</span> <span>${probToPercent(result.probs.homeProb)} ${formatDiff(result.probs.homeProb, originalProbs.homeProb)}</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Döntetlen:</span> <span>${probToPercent(result.probs.drawProb)} ${formatDiff(result.probs.drawProb, originalProbs.drawProb)}</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Vendég Győzelem:</span> <span>${probToPercent(result.probs.awayProb)} ${formatDiff(result.probs.awayProb, originalProbs.awayProb)}</span></div>
+                <div class="flex justify-between text-sm"><span class="text-gray-400">Over 2.5:</span> <span>${probToPercent(result.probs.over25Prob)} ${formatDiff(result.probs.over25Prob, originalProbs.over25Prob)}</span></div>
+            </div>
         `;
+        modalContainer.classList.remove('hidden');
     }
-    
-    modalTitle.textContent = 'Paraméterérzékenység';
-    modalContent.innerHTML = `
-        <p class="text-sm text-gray-300 mb-2">A fő piaci valószínűségek változása a ρ és λ3 korrelációs paraméterek módosításával.</p>
-        <table class="w-full text-xs text-left">
-            <thead class="bg-gray-700"><tr>
-                <th class="px-2 py-1 text-center">(ρ, λ3)</th>
-                <th class="px-2 py-1 text-center">Hazai %</th>
-                <th class="px-2 py-1 text-center">Döntetlen %</th>
-                <th class="px-2 py-1 text-center">Over 2.5 %</th>
-            </tr></thead>
-            <tbody class="bg-gray-900 divide-y divide-gray-700">
-                ${createRow(rho, l3c)}
-                ${createRow(rho + 0.1, l3c)}
-                ${createRow(rho - 0.1, l3c)}
-                ${createRow(rho, l3c + 0.1)}
-                ${createRow(rho, l3c - 0.1)}
-            </tbody>
-        </table>
-    `;
-    modalContainer.classList.remove('hidden');
-}
 
-
-// --- Local Storage Management & Modal Closing ---
-document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
-
+    function runSensitivityAnalysis(home, away, rho, l3c, mix) {
+        const createRow = (p_rho, p_l3c) => {
+            const res = AI_SYSTEM.GENERATIVE_CORE.run(home, away, p_rho, p_l3c, mix);
+            if (res.error) return `<tr><td colspan="4" class="text-center text-red-400 p-2">Hiba a számítás során</td></tr>`;
+            return `
+                <tr>
+                    <td class="px-2 py-1 text-center font-mono">${p_rho.toFixed(2)}, ${p_l3c.toFixed(2)}</td>
+                    <td class="px-2 py-1 text-center">${(res.probs.homeProb*100).toFixed(1)}%</td>
+                    <td class="px-2 py-1 text-center">${(res.probs.drawProb*100).toFixed(1)}%</td>
+                    <td class="px-2 py-1 text-center">${(res.probs.over25Prob*100).toFixed(1)}%</td>
+                </tr>
+            `;
+        }
+        
+        modalTitle.textContent = 'Paraméterérzékenység';
+        modalContent.innerHTML = `
+            <p class="text-sm text-gray-300 mb-2">A fő piaci valószínűségek változása a ρ és λ3 korrelációs paraméterek módosításával.</p>
+            <table class="w-full text-xs text-left">
+                <thead class="bg-gray-700"><tr>
+                    <th class="px-2 py-1 text-center">(ρ, λ3)</th>
+                    <th class="px-2 py-1 text-center">Hazai %</th>
+                    <th class="px-2 py-1 text-center">Döntetlen %</th>
+                    <th class="px-2 py-1 text-center">Over 2.5 %</th>
+                </tr></thead>
+                <tbody class="bg-gray-900 divide-y divide-gray-700">
+                    ${createRow(rho, l3c)}
+                    ${createRow(rho + 0.1, l3c)}
+                    ${createRow(rho - 0.1, l3c)}
+                    ${createRow(rho, l3c + 0.1)}
+                    ${createRow(rho, l3c - 0.1)}
+                </tbody>
+            </table>
+        `;
+        modalContainer.classList.remove('hidden');
+    }
+});
 </script>
 
 </body>

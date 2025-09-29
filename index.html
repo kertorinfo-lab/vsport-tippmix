@@ -11,7 +11,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
         .loader { width: 24px; height: 24px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
-        .poisson-card { border: 2px solid #38bdf8; background-color: #0c3555; }
+        .poisson-card { border: 2px solid #38bdf8; background-color: #0c3355; }
         input[type=range]::-webkit-slider-thumb { background-color: #38bdf8; }
         input[type=range]::-moz-range-thumb { background-color: #38bdf8; }
         details > summary { list-style: none; }
@@ -63,10 +63,6 @@
                              <div>
                                 <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
                                 <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
-                            </div>
-                            <div>
-                                <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
-                                <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
                             </div>
                         </div>
                         <!-- Right Side: Autofit -->
@@ -372,7 +368,7 @@ const runAIAnalysis = () => {
                      </div>
                 </div>
                 <div>
-                    <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés & Margin</h4>
+                    <h4 class="font-bold text-sky-300 mb-2">Kockázatkezelés & Dinamikus Margin</h4>
                     <div class="bg-gray-900/50 p-3 rounded-lg text-center text-sm">
                         <p>Javasolt alap margin: <span class="font-bold text-sky-300">${(dynamicMargin.suggestedMargin*100).toFixed(1)}%</span></p>
                     </div>

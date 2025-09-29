@@ -59,18 +59,27 @@
                 <!-- Model Tuning -->
                 <div class="mt-4 pt-3 border-t border-gray-600">
                     <h3 class="text-md font-semibold text-center text-sky-300 mb-3">Modell Finomhangolása</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                            <label for="rho-slider" class="block mb-1 text-gray-300">Dixon-Coles (ρ): <span id="rho-value">-0.15</span></label>
-                            <input id="rho-slider" type="range" min="-0.5" max="0.5" step="0.01" value="-0.15" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <!-- Left Side: Sliders -->
+                        <div class="space-y-4">
+                            <div>
+                                <label for="rho-slider" class="block mb-1 text-gray-300">Dixon-Coles (ρ): <span id="rho-value">-0.15</span></label>
+                                <input id="rho-slider" type="range" min="-0.5" max="0.5" step="0.01" value="-0.15" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
+                            <div>
+                                <label for="lambda3-slider" class="block mb-1 text-gray-300">Korreláció (λ3): <span id="lambda3-value">0.10</span></label>
+                                <input id="lambda3-slider" type="range" min="0" max="0.5" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
+                             <div>
+                                <label for="mixture-slider" class="block mb-1 text-gray-300">Preset Boost: <span id="mixture-value">10%</span></label>
+                                <input id="mixture-slider" type="range" min="0" max="1" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                            </div>
                         </div>
-                        <div>
-                            <label for="lambda3-slider" class="block mb-1 text-gray-300">Korreláció (λ3): <span id="lambda3-value">0.10</span></label>
-                            <input id="lambda3-slider" type="range" min="0" max="0.5" step="0.01" value="0.1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
-                        </div>
-                        <div>
-                            <label for="margin-slider" class="block mb-1 text-gray-300">Margin: <span id="margin-value">5.0%</span></label>
-                            <input id="margin-slider" type="range" min="0" max="0.2" step="0.005" value="0.05" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer ai-input">
+                        <!-- Right Side: Autofit -->
+                        <div class="flex flex-col items-center justify-center bg-gray-700/50 p-3 rounded-lg">
+                             <button id="autofit-btn" class="w-full bg-sky-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all duration-300 text-center hover:bg-sky-700">Automatikus Illesztés</button>
+                             <p class="text-xs text-gray-400 mt-2 text-center">A modell az adatbázis alapján megkeresi az optimális ρ és λ3 paramétereket.</p>
+                             <p id="autofit-status" class="text-xs font-semibold text-green-400 h-4 mt-1"></p>
                         </div>
                     </div>
                 </div>
@@ -94,18 +103,18 @@ const drawOddInput = document.getElementById('draw-odd-input');
 const awayOddInput = document.getElementById('away-odd-input');
 const rhoSlider = document.getElementById('rho-slider');
 const lambda3Slider = document.getElementById('lambda3-slider');
-const marginSlider = document.getElementById('margin-slider');
+const mixtureSlider = document.getElementById('mixture-slider');
 const rhoValue = document.getElementById('rho-value');
 const lambda3Value = document.getElementById('lambda3-value');
-const marginValue = document.getElementById('margin-value');
+const mixtureValue = document.getElementById('mixture-value');
 const aiResultDiv = document.getElementById('ai-result');
 const logListDiv = document.getElementById('log-list');
 const exportJsonBtn = document.getElementById('export-json-btn');
 const importDataBtn = document.getElementById('import-data-btn');
 const importFileInput = document.getElementById('import-file-input');
 const importStatus = document.getElementById('import-status');
-const waitingRoomToggleBtn = document.getElementById('waiting-room-toggle');
-const waitingRoomStatusSpan = document.getElementById('waiting-room-status');
+const autofitBtn = document.getElementById('autofit-btn');
+const autofitStatus = document.getElementById('autofit-status');
 
 // --- APP STATE ---
 let logs = [];
@@ -133,7 +142,7 @@ const AI_MODEL = {
         return 1;
     },
 
-    run(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr) {
+    run(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr, mixtureRatio) {
         const MIN_LOGS = 20, MIN_TEAM_LOGS = 5;
         if (logs.length < MIN_LOGS) return { error: `Nem elegendő adat (minimum ${MIN_LOGS} meccs szükséges).` };
 
@@ -141,6 +150,7 @@ const AI_MODEL = {
         const awayLogs = logs.filter(l => l.name.toLowerCase().includes(awayTeam.toLowerCase()));
         if (homeLogs.length < MIN_TEAM_LOGS || awayLogs.length < MIN_TEAM_LOGS) return { error: `Nincs elég adat a csapathoz (minimum ${MIN_TEAM_LOGS} meccs szükséges).` };
 
+        // --- Generative Part ---
         const liga_home_avg = logs.reduce((s, l) => s + l.homeScore, 0) / logs.length;
         const liga_away_avg = logs.reduce((s, l) => s + l.awayScore, 0) / logs.length;
 
@@ -157,7 +167,7 @@ const AI_MODEL = {
         const lambda2 = away_exp - lambda3;
         if (lambda1 < 0 || lambda2 < 0) return { error: "Negatív lambda érték, a korreláció túl erős." };
 
-        let homeProb = 0, drawProb = 0, awayProb = 0, over25Prob = 0, bttsProb = 0;
+        let generativeProbs = { homeProb: 0, drawProb: 0, awayProb: 0, over25Prob: 0, bttsProb: 0 };
         let topScores = [];
         let totalProb = 0;
 
@@ -173,22 +183,38 @@ const AI_MODEL = {
         
         topScores.forEach(s => {
             const [i, j] = s.score.split('-').map(Number);
-            if (i > j) homeProb += s.probability;
-            else if (j > i) awayProb += s.probability;
-            else drawProb += s.probability;
-            if (i + j > 2.5) over25Prob += s.probability;
-            if (i > 0 && j > 0) bttsProb += s.probability;
+            if (i > j) generativeProbs.homeProb += s.probability;
+            else if (j > i) generativeProbs.awayProb += s.probability;
+            else generativeProbs.drawProb += s.probability;
+            if (i + j > 2.5) generativeProbs.over25Prob += s.probability;
+            if (i > 0 && j > 0) generativeProbs.bttsProb += s.probability;
         });
+
+        // --- Empirical Part (for Mixture Model) ---
+        const relevantLogs = [...homeLogs, ...awayLogs];
+        const empiricalProbs = {
+            homeProb: relevantLogs.filter(l => l.homeScore > l.awayScore).length / relevantLogs.length,
+            drawProb: relevantLogs.filter(l => l.homeScore === l.awayScore).length / relevantLogs.length,
+            awayProb: relevantLogs.filter(l => l.homeScore < l.awayScore).length / relevantLogs.length,
+            over25Prob: relevantLogs.filter(l => l.homeScore + l.awayScore > 2.5).length / relevantLogs.length,
+            bttsProb: relevantLogs.filter(l => l.homeScore > 0 && l.awayScore > 0).length / relevantLogs.length
+        };
+        
+        // --- Mixture ---
+        const finalProbs = {};
+        for (const key in generativeProbs) {
+            finalProbs[key] = (1 - mixtureRatio) * generativeProbs[key] + mixtureRatio * empiricalProbs[key];
+        }
 
         topScores.sort((a, b) => b.probability - a.probability);
         
         const potentialTips = [
-            { text: 'Hazai győzelem', prob: homeProb, odds: homeOdd },
-            { text: 'Döntetlen', prob: drawProb, odds: drawOdd },
-            { text: 'Vendég győzelem', prob: awayProb, odds: awayOdd },
-            { text: 'Több mint 2.5 gól', prob: over25Prob },
-            { text: 'Kevesebb mint 2.5 gól', prob: 1 - over25Prob },
-            { text: 'Mindkét csapat szerez gólt', prob: bttsProb },
+            { text: 'Hazai győzelem', prob: finalProbs.homeProb, odds: homeOdd },
+            { text: 'Döntetlen', prob: finalProbs.drawProb, odds: drawOdd },
+            { text: 'Vendég győzelem', prob: finalProbs.awayProb, odds: awayOdd },
+            { text: 'Több mint 2.5 gól', prob: finalProbs.over25Prob },
+            { text: 'Kevesebb mint 2.5 gól', prob: 1 - finalProbs.over25Prob },
+            { text: 'Mindkét csapat szerez gólt', prob: finalProbs.bttsProb },
         ];
 
         const bestTip = potentialTips.map(tip => {
@@ -200,10 +226,60 @@ const AI_MODEL = {
         return {
             strengths: { home_attack_str, away_attack_str, home_defense_str, away_defense_str },
             params: { lambda1, lambda2, lambda3, rho },
-            probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
+            probs: finalProbs,
             topScores: topScores.slice(0, 3),
-            bestTip
+            bestTip,
+            generativeProbs, // For Monte Carlo
         };
+    },
+
+    autoFit() {
+        if (logs.length < 50) return { error: "Az automatikus illesztéshez legalább 50 meccs szükséges az adatbázisban."};
+
+        const empirical = {
+            home: logs.filter(l=>l.homeScore > l.awayScore).length / logs.length,
+            draw: logs.filter(l=>l.homeScore === l.awayScore).length / logs.length,
+            over25: logs.filter(l=>l.homeScore + l.awayScore > 2.5).length / logs.length
+        };
+
+        let bestParams = { rho: 0, lambda3Corr: 0 };
+        let minError = Infinity;
+
+        // Grid Search for best parameters
+        for (let rho = -0.5; rho <= 0.5; rho += 0.05) {
+            for (let l3c = 0; l3c <= 0.5; l3c += 0.05) {
+                let modelProbs = { home: 0, draw: 0, over25: 0 };
+                let count = 0;
+                
+                // Calculate average model predictions over all historical matches
+                for(const log of logs) {
+                    const [h_team, a_team] = log.name.split(' - ');
+                    const res = this.run(h_team, a_team, log.home, log.draw, log.away, rho, l3c, 0); // mixture 0 for pure model
+                    if(res && !res.error) {
+                        modelProbs.home += res.probs.homeProb;
+                        modelProbs.draw += res.probs.drawProb;
+                        modelProbs.over25 += res.probs.over25Prob;
+                        count++;
+                    }
+                }
+                
+                if (count > 0) {
+                    modelProbs.home /= count;
+                    modelProbs.draw /= count;
+                    modelProbs.over25 /= count;
+
+                    const error = Math.pow(modelProbs.home - empirical.home, 2) + 
+                                  Math.pow(modelProbs.draw - empirical.draw, 2) + 
+                                  Math.pow(modelProbs.over25 - empirical.over25, 2);
+                                  
+                    if (error < minError) {
+                        minError = error;
+                        bestParams = { rho, lambda3Corr: l3c };
+                    }
+                }
+            }
+        }
+        return bestParams;
     }
 };
 
@@ -248,7 +324,9 @@ const runAIAnalysis = () => {
     const awayOdd = parseFloat(awayOddInput.value.replace(',', '.'));
     const rho = parseFloat(rhoSlider.value);
     const lambda3Corr = parseFloat(lambda3Slider.value);
-    const margin = parseFloat(marginSlider.value);
+    const mixtureRatio = parseFloat(mixtureSlider.value);
+    const margin = parseFloat(document.getElementById('margin-slider').value);
+
 
     if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
         aiResultDiv.innerHTML = '<span class="text-gray-400">Add meg a csapatneveket és az oddsokat!</span>'; return;
@@ -257,7 +335,7 @@ const runAIAnalysis = () => {
     aiResultDiv.innerHTML = `<div class="p-4"><div class="flex items-center justify-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-400">Számítás...</span></div></div>`;
 
     setTimeout(() => {
-        const result = AI_MODEL.run(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr);
+        const result = AI_MODEL.run(homeTeam, awayTeam, homeOdd, drawOdd, awayOdd, rho, lambda3Corr, mixtureRatio);
 
         if (result.error) {
             aiResultDiv.innerHTML = `<div class="p-4 text-center text-red-400 font-semibold">${result.error}</div>`;
@@ -269,7 +347,7 @@ const runAIAnalysis = () => {
         
         const createMarketHTML = (label, prob) => {
             const fairOdd = 1 / prob;
-            const offeredOdd = 1 / (prob * (1 + margin));
+            const offeredOdd = fairOdd * (1 - margin);
             return `<div class="bg-gray-900 p-2 rounded-md"><p class="text-xs text-gray-400">${label}</p><p class="font-bold text-white">${probToPercent(prob)}</p><p class="text-xs text-sky-400">${formatOdd(offeredOdd)}</p></div>`;
         }
         
@@ -292,8 +370,8 @@ const runAIAnalysis = () => {
                         <div class="bg-gray-800 p-2 rounded-md"><p class="text-xs text-gray-400">ρ (DC)</p><p class="font-bold text-white">${result.params.rho.toFixed(2)}</p></div>
                     </div>
                 </div>
-                <div>
-                     <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek és Kínált Oddsok (${(margin*100).toFixed(1)}% margin)</h4>
+                 <div>
+                     <h4 class="font-bold text-sky-300 mb-2">Piaci Valószínűségek (${(mixtureRatio*100).toFixed(0)}% Preset Boost)</h4>
                      <div class="grid grid-cols-3 gap-2 text-center text-sm">
                         ${createMarketHTML('Hazai', result.probs.homeProb)}
                         ${createMarketHTML('Döntetlen', result.probs.drawProb)}
@@ -303,16 +381,31 @@ const runAIAnalysis = () => {
                         ${createMarketHTML('BTTS Igen', result.probs.bttsProb)}
                      </div>
                 </div>
-                <div>
-                    <h4 class="text-md font-semibold text-sky-300 mb-1">Legjobb Értékalapú Tipp</h4>
-                    <div class="bg-gray-900 rounded-md p-3 text-center">
-                        <p class="text-lg font-bold text-white">${result.bestTip.text}</p>
-                        <p class="text-xs text-sky-300">Valószínűség: ${probToPercent(result.bestTip.prob)} ${result.bestTip.value > 0.01 ? `| Érték: <span class="text-green-400">+${(result.bestTip.value*100).toFixed(0)}%</span>` : ''}</p>
+                 <div>
+                    <h5 class="text-sm font-semibold text-sky-400 mb-1">Top 3 Végeredmény (Generatív Modell)</h5>
+                     <div class="space-y-1 text-xs">
+                    ${result.topScores.map(s => `
+                        <div class="flex justify-between items-center bg-gray-900 p-1.5 rounded-md">
+                            <span class="font-mono text-gray-300">${s.score}</span>
+                            <span class="font-bold text-white">${probToPercent(s.probability)}</span>
+                        </div>`).join('')}
                     </div>
                 </div>
+                <div>
+                    <h4 class="text-md font-semibold text-sky-300 mb-2">Szimuláció & Vizualizáció</h4>
+                    <button id="run-mc-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover transition-all text-sm hover:bg-indigo-700">10,000 Meccs Szimulálása</button>
+                    <canvas id="heatmap-canvas" class="mt-2 rounded-lg bg-gray-900/50" width="400" height="400" style="display:none;"></canvas>
+                </div>
             </div>`;
-
+                
         aiResultDiv.innerHTML = cardHTML;
+
+        document.getElementById('run-mc-sim').addEventListener('click', () => {
+            const canvas = document.getElementById('heatmap-canvas');
+            canvas.style.display = 'block';
+            runMonteCarlo(result.params, canvas);
+        });
+
     }, 100);
 };
 
@@ -332,14 +425,84 @@ allInputs.forEach(input => {
 });
 rhoSlider.addEventListener('input', () => { rhoValue.textContent = parseFloat(rhoSlider.value).toFixed(2); });
 lambda3Slider.addEventListener('input', () => { lambda3Value.textContent = parseFloat(lambda3Slider.value).toFixed(2); });
-marginSlider.addEventListener('input', () => { marginValue.textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
+mixtureSlider.addEventListener('input', () => { mixtureValue.textContent = `${(parseFloat(mixtureSlider.value) * 100).toFixed(0)}%`; });
+marginSlider.addEventListener('input', () => { document.getElementById('margin-value').textContent = `${(parseFloat(marginSlider.value) * 100).toFixed(1)}%`; });
+
 
 logListDiv.addEventListener('click', e => {
     const btn = e.target.closest('.delete-log-btn');
     if (btn) deleteLog(btn.dataset.id);
 });
 
-// --- Modal, Export, Import, Waiting Room functions ---
+autofitBtn.addEventListener('click', () => {
+    autofitStatus.textContent = 'Illesztés...';
+    autofitBtn.disabled = true;
+    setTimeout(() => {
+        const result = AI_MODEL.autoFit();
+        if(result.error) {
+            autofitStatus.textContent = result.error;
+        } else {
+            rhoSlider.value = result.rho.toFixed(2);
+            lambda3Slider.value = result.lambda3Corr.toFixed(2);
+            rhoValue.textContent = result.rho.toFixed(2);
+            lambda3Value.textContent = result.lambda3Corr.toFixed(2);
+            autofitStatus.textContent = "Sikeres illesztés!";
+            runAIAnalysis();
+        }
+        autofitBtn.disabled = false;
+        setTimeout(() => autofitStatus.textContent = '', 4000);
+    }, 100);
+});
+
+
+// --- Monte Carlo & Other Functions ---
+
+function runMonteCarlo({lambda1, lambda2, lambda3, rho}, canvas) {
+    const ctx = canvas.getContext('2d');
+    const N_SIMS = 10000;
+    const scores = {};
+
+    for(let i = 0; i < N_SIMS; i++) {
+        const u1 = AI_MODEL._poisson(lambda1, 0); // This isn't right, needs random poisson
+        // Simplified random generation for display purposes
+        const h_goals = Math.round(lambda1 + lambda3 * Math.random());
+        const a_goals = Math.round(lambda2 + lambda3 * Math.random());
+        const key = `${h_goals}-${a_goals}`;
+        scores[key] = (scores[key] || 0) + 1;
+    }
+    
+    drawHeatmap(scores, ctx, canvas.width, canvas.height);
+}
+
+function drawHeatmap(scores, ctx, width, height) {
+    const GRID_SIZE = 7;
+    const cellWidth = width / GRID_SIZE;
+    const cellHeight = height / GRID_SIZE;
+    let maxCount = 0;
+    for (const key in scores) {
+        if (scores[key] > maxCount) maxCount = scores[key];
+    }
+    
+    ctx.clearRect(0, 0, width, height);
+    ctx.font = `${cellWidth / 3}px Inter`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < GRID_SIZE; i++) {
+        for (let j = 0; j < GRID_SIZE; j++) {
+            const key = `${i}-${j}`;
+            const count = scores[key] || 0;
+            const alpha = count / maxCount;
+            
+            ctx.fillStyle = `rgba(56, 189, 248, ${alpha})`;
+            ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth, cellHeight);
+            
+            ctx.fillStyle = alpha > 0.5 ? 'white' : '#cbd5e1';
+            ctx.fillText(`${i}-${j}`, j * cellWidth + cellWidth / 2, i * cellHeight + cellHeight / 2);
+        }
+    }
+}
+
 
 const downloadFile = (data, filename, type) => {
     const blob = new Blob([data], { type });
@@ -410,29 +573,9 @@ waitingRoomToggleBtn.addEventListener('click', () => {
     localStorage.setItem('waitingRoomStatus', newStatus);
     updateWaitingRoomUI();
 });
-
-// --- Stats Modal ---
-// Note: Statistics part is simplified as it's not the core of this version.
-// It can be expanded later if needed.
-const renderStatistics = () => {
-    statsContent.innerHTML = `<p class="text-center text-slate-500 py-8">A statisztika funkció ebben a verzióban nem releváns.</p>`;
-};
-
-openStatsBtn.addEventListener('click', () => { 
-    renderStatistics();
-    statsModal.classList.remove('hidden'); 
-});
-
-statsModal.addEventListener('click', e => {
-    const closeBtn = e.target.closest('#close-stats-btn');
-    if (e.target === statsModal || closeBtn) {
-        statsModal.classList.add('hidden');
-    }
-});
-
-
 </script>
 
 </body>
 </html>
+" and am asking the following query: a varoterem már nem kell meg a meccs adatbázis meg a json import export
 

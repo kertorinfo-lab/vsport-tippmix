@@ -142,11 +142,13 @@ const simpleHash = (str) => {
 const DataManager = {
     logs: [],
     predictionsLog: [],
+    modelConfidence: 1.0, // New property to simulate model learning
     initialLogs: [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester City - Manchester United", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "Arsenal - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }],
     
     save: () => {
         localStorage.setItem('vsportAdminLogs', JSON.stringify(DataManager.logs));
         localStorage.setItem('vsportAdminPredictions', JSON.stringify(DataManager.predictionsLog));
+        localStorage.setItem('vsportModelConfidence', DataManager.modelConfidence.toString());
     },
 
     load: () => {
@@ -154,11 +156,14 @@ const DataManager = {
         DataManager.logs = storedLogs ? JSON.parse(storedLogs) : DataManager.initialLogs;
         const storedPredictions = localStorage.getItem('vsportAdminPredictions');
         DataManager.predictionsLog = storedPredictions ? JSON.parse(storedPredictions) : [];
+        const storedConfidence = localStorage.getItem('vsportModelConfidence');
+        DataManager.modelConfidence = storedConfidence ? parseFloat(storedConfidence) : 1.0;
     },
     
     clearAll: () => {
         DataManager.logs = [];
         DataManager.predictionsLog = [];
+        DataManager.modelConfidence = 1.0;
         DataManager.save();
     },
 
@@ -172,30 +177,35 @@ const DataManager = {
 
     deleteLog: (id) => {
         DataManager.logs = DataManager.logs.filter(l => l.id !== id);
+    },
+
+    updateConfidence: (isCorrect) => {
+        if (isCorrect) {
+            DataManager.modelConfidence = Math.min(1.5, DataManager.modelConfidence + 0.02);
+        } else {
+            DataManager.modelConfidence = Math.max(0.5, DataManager.modelConfidence - 0.04);
+        }
     }
 };
 
 const AI_SYSTEM = {
     GENERATIVE_CORE: {
-        run(homeTeam, awayTeam, dataSource = []) {
+        run(homeTeam, awayTeam, dataSource = [], modelConfidence) {
             if (dataSource.length < 2) return { error: `Nem elegendő historikus adat a megbízható elemzéshez.` };
 
-            // Deterministic strength simulation based on team names
-            const homeAttack = 1 + (simpleHash(homeTeam) % 100) / 100 * 0.8; // 1.0 - 1.8
-            const awayAttack = 1 + (simpleHash(awayTeam) % 100) / 100 * 0.8; // 1.0 - 1.8
-            const homeDefense = 0.8 + (simpleHash(homeTeam + "def") % 100) / 100 * 0.6; // 0.8 - 1.4
-            const awayDefense = 0.8 + (simpleHash(awayTeam + "def") % 100) / 100 * 0.6; // 0.8 - 1.4
+            const homeAttack = 1 + (simpleHash(homeTeam) % 100) / 100 * 0.8;
+            const awayAttack = 1 + (simpleHash(awayTeam) % 100) / 100 * 0.8;
+            const homeDefense = 0.8 + (simpleHash(homeTeam + "def") % 100) / 100 * 0.6;
+            const awayDefense = 0.8 + (simpleHash(awayTeam + "def") % 100) / 100 * 0.6;
 
-            const homeExpGoals = homeAttack * awayDefense;
-            const awayExpGoals = awayAttack * homeDefense;
+            const homeExpGoals = homeAttack * awayDefense * modelConfidence; // Apply confidence
+            const awayExpGoals = awayAttack * homeDefense * modelConfidence;
 
-            // Normalize expected goals to get probabilities (simplified)
             const totalPower = homeExpGoals + awayExpGoals;
-            let homeProb = (homeExpGoals / totalPower) * 0.85; // Leave room for draws
+            let homeProb = (homeExpGoals / totalPower) * 0.85;
             let awayProb = (awayExpGoals / totalPower) * 0.85;
             let drawProb = 1 - homeProb - awayProb;
             
-            // Adjust if draw probability is unrealistic
             if (drawProb < 0.15) {
                 const diff = 0.15 - drawProb;
                 drawProb = 0.15;
@@ -204,8 +214,8 @@ const AI_SYSTEM = {
             }
 
             const totalGoals = homeExpGoals + awayExpGoals;
-            const over25Prob = Math.min(0.9, totalGoals / 4.5); // Heuristic
-            const bttsProb = Math.min(0.85, (homeAttack * awayAttack) / 3); // Heuristic
+            const over25Prob = Math.min(0.9, totalGoals / 4.5);
+            const bttsProb = Math.min(0.85, (homeAttack * awayAttack) / 3);
 
             return { 
                 error: null,
@@ -322,14 +332,20 @@ const App = {
     },
     
     runAIAnalysis: () => {
-        const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput } = UIManager.elements;
-        const homeTeam = homeTeamInput.value.trim();
-        const awayTeam = awayTeamInput.value.trim();
-        const homeOdd = parseSafeFloat(homeOddInput.value);
-        const drawOdd = parseSafeFloat(drawOddInput.value);
-        const awayOdd = parseSafeFloat(awayOddInput.value);
+        const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput, over25OddInput, under25OddInput, bttsYesOddInput, bttsNoOddInput } = UIManager.elements;
+        const inputs = {
+            homeTeam: homeTeamInput.value.trim(),
+            awayTeam: awayTeamInput.value.trim(),
+            homeOdd: parseSafeFloat(homeOddInput.value),
+            drawOdd: parseSafeFloat(drawOddInput.value),
+            awayOdd: parseSafeFloat(awayOddInput.value),
+            over25Odd: parseSafeFloat(over25OddInput.value),
+            under25Odd: parseSafeFloat(under25OddInput.value),
+            bttsYesOdd: parseSafeFloat(bttsYesOddInput.value),
+            bttsNoOdd: parseSafeFloat(bttsNoOddInput.value),
+        }
 
-        if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
+        if (!inputs.homeTeam || !inputs.awayTeam || isNaN(inputs.homeOdd) || isNaN(inputs.drawOdd) || isNaN(inputs.awayOdd)) {
             UIManager.elements.aiResultDiv.innerHTML = '<div class="text-center p-4 text-gray-500">Kérlek tölts ki minden csapat- és 1X2 odds mezőt az elemzéshez.</div>';
             return;
         }
@@ -337,45 +353,51 @@ const App = {
         UIManager.showLoading();
 
         setTimeout(() => {
-            const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, DataManager.logs);
-            App.lastAnalysisResult = result; // Store result for later use
+            const result = AI_SYSTEM.GENERATIVE_CORE.run(inputs.homeTeam, inputs.awayTeam, DataManager.logs, DataManager.modelConfidence);
+            App.lastAnalysisResult = { ...result, inputs }; // Store result and inputs
             
             if (result.error) {
                 UIManager.showError(result.error);
                 return;
             }
 
-            const twins = [
-                { name: 'Twin-A (High Volatility)', description: 'Magas volatilitású piacokra optimalizálva.', active: false },
-                { name: 'Twin-B (Conservative Market)', description: 'Stabil, kiszámítható piacokra hangolva.', active: false },
-                { name: 'Twin-C (Preset-driven Bias)', description: 'Erős preset-vezérelt torzításokat észlel.', active: false },
-            ];
-            twins[Math.floor(simpleHash(homeTeam + awayTeam) % 3)].active = true; // Deterministic twin selection
+            const allTips = [
+                { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: inputs.homeOdd },
+                { text: 'Döntetlen', prob: result.probs.drawProb, odds: inputs.drawOdd },
+                { text: 'Vendég győzelem', prob: result.probs.awayProb, odds: inputs.awayOdd },
+                { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob, odds: inputs.over25Odd },
+                { text: 'Kevesebb mint 2.5 gól', prob: 1 - result.probs.over25Prob, odds: inputs.under25Odd },
+                { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb, odds: inputs.bttsYesOdd },
+                { text: 'Mindkét csapat nem szerez gólt', prob: 1 - result.probs.bttsProb, odds: inputs.bttsNoOdd },
+            ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
+             .filter(tip => !isNaN(tip.odds)); // Only include tips with provided odds
+            
+            allTips.sort((a,b) => b.value - a.value);
+            const portfolio = allTips.slice(0, 3); // Build portfolio from best value tips
+
+            const twins = [ { name: 'Twin-A (High Volatility)', active: false }, { name: 'Twin-B (Conservative)', active: false }, { name: 'Twin-C (Preset-driven)', active: false }, ];
+            twins[simpleHash(inputs.homeTeam + inputs.awayTeam) % 3].active = true;
             const latentState = {
-                presetWeight: (simpleHash(homeTeam) % 301 / 1000 + 0.1).toFixed(3),
-                seedEntropy: (simpleHash(awayTeam) % 15 + 80).toFixed(2) + '%'
+                presetWeight: (simpleHash(inputs.homeTeam) % 301 / 1000 + 0.1).toFixed(3),
+                seedEntropy: (simpleHash(inputs.awayTeam) % 15 + 80).toFixed(2) + '%'
             };
-            const portfolio = [
-                { text: 'Hazai győzelem', prob: result.probs.homeProb, value: result.probs.homeProb * homeOdd - 1 },
-                { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob, value: Math.random() * 0.2 - 0.1 }
-            ];
             const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
             
             const cardHTML = `
             <div class="main-card text-white p-5 rounded-xl border-2 border-blue-800 space-y-6">
-                <div>
+                 <div>
                     <h3 class="text-lg font-bold text-sky-300 mb-3">Digital Twin Orchestrator</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        ${twins.map(twin => `<div class="border-2 border-gray-600 rounded-lg p-3 transition duration-300 ${twin.active ? 'twin-active' : ''}"><p class="font-semibold text-sm">${twin.name}</p><p class="text-xs text-gray-400 mt-1">${twin.description}</p></div>`).join('')}
+                        ${twins.map(twin => `<div class="border-2 border-gray-600 rounded-lg p-3 transition duration-300 ${twin.active ? 'twin-active' : ''}"><p class="font-semibold text-sm">${twin.name}</p></div>`).join('')}
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-4">
-                        <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Parametric Baseline (Dixon-Coles)</h4>
-                            <div class="grid grid-cols-2 gap-2 text-center text-sm bg-gray-900/50 p-2 rounded-lg">
-                                <div><p class="text-xs text-gray-400">H. Támadó</p><p class="font-bold">${result.strengths.home_attack_str}</p></div>
-                                <div><p class="text-xs text-gray-400">V. Védekező</p><p class="font-bold">${result.strengths.away_defense_str}</p></div>
+                         <div>
+                            <h4 class="font-semibold text-sky-300 mb-2">Modell Állapota (Online Tanulás)</h4>
+                             <div class="bg-gray-900/50 p-3 rounded-lg text-center">
+                                 <p class="text-xs text-gray-400">Jelenlegi Konfidencia</p>
+                                 <p class="text-xl font-bold text-white">${(DataManager.modelConfidence * 100).toFixed(1)}%</p>
                             </div>
                         </div>
                         <div>
@@ -392,12 +414,14 @@ const App = {
                     </div>
                     <div class="space-y-4">
                         <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Ensemble Decision Module</h4>
-                            <div class="space-y-2">
-                                ${portfolio.map((tip, index) => `<div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}"><p class="font-bold text-white">${tip.text}</p><div class="text-xs text-sky-300 flex justify-around mt-1"><span>P: ${probToPercent(tip.prob)}</span>${tip.value > 0 ? `<span>Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}</div></div>`).join('')}
-                            </div>
+                            <h4 class="font-semibold text-sky-300 mb-2">Ensemble Decision Module (Value Alapú Portfólió)</h4>
+                             ${portfolio.length > 0 ? `
+                                <div class="space-y-2">
+                                    ${portfolio.map((tip, index) => `<div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}"><p class="font-bold text-white">${tip.text}</p><div class="text-xs text-sky-300 flex justify-around mt-1"><span>P: ${probToPercent(tip.prob)}</span><span>Érték: <span class="${tip.value > 0 ? 'text-green-400' : 'text-red-400'}">${(tip.value*100).toFixed(0)}%</span></span></div></div>`).join('')}
+                                </div>
+                             ` : `<div class="text-center text-gray-400 text-sm p-4 bg-gray-900/50 rounded-lg">Nem található pozitív értékű tipp a megadott oddsok alapján.</div>`}
                         </div>
-                        <div class="p-3 bg-gray-600 rounded-lg text-left">
+                        <div class="p-3 bg-gray-600 rounded-lg text-left" id="save-result-panel">
                             <h4 class="font-bold text-gray-300 text-sm mb-2">Eredmény rögzítése</h4>
                             <div class="flex items-center space-x-2">
                                 <input type="number" placeholder="H" min="0" class="actual-home-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center" required>
@@ -429,56 +453,58 @@ const App = {
         homeScoreInput.classList.remove('border-red-500');
         awayScoreInput.classList.remove('border-red-500');
 
-        if (!App.lastAnalysisResult) {
-            console.error("No analysis result found to save.");
-            return;
-        }
+        if (!App.lastAnalysisResult) { return; }
 
-        const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput } = UIManager.elements;
+        const { inputs, probs } = App.lastAnalysisResult;
         const newLog = {
             id: Date.now(),
-            name: `${homeTeamInput.value.trim()} - ${awayTeamInput.value.trim()}`,
-            home: parseSafeFloat(homeOddInput.value),
-            draw: parseSafeFloat(drawOddInput.value),
-            away: parseSafeFloat(awayOddInput.value),
-            homeScore: actualHomeScore,
-            awayScore: actualAwayScore,
+            name: `${inputs.homeTeam} - ${inputs.awayTeam}`,
+            home: inputs.homeOdd, draw: inputs.drawOdd, away: inputs.awayOdd,
+            homeScore: actualHomeScore, awayScore: actualAwayScore,
             outcome: actualHomeScore > actualAwayScore ? 'homeWin' : (actualHomeScore < actualAwayScore ? 'awayWin' : 'draw')
         };
         DataManager.addLog(newLog);
 
-        const probs = App.lastAnalysisResult.probs;
-        const mainOutcomes = [
-            { text: 'Hazai győzelem', prob: probs.homeProb },
-            { text: 'Döntetlen', prob: probs.drawProb },
-            { text: 'Vendég győzelem', prob: probs.awayProb }
-        ];
-        mainOutcomes.sort((a, b) => b.prob - a.prob);
-        const bestPrediction = mainOutcomes[0];
-
-        const isCorrect = checkPrediction(bestPrediction.text, actualHomeScore, actualAwayScore);
-
-        DataManager.addPrediction({
-            id: Date.now() + 1,
-            teams: newLog.name,
-            predicted: bestPrediction.text,
-            isMainTip: true,
-            actualScore: `${actualHomeScore}-${actualAwayScore}`,
-            correct: isCorrect
+        const allTips = [
+            { text: 'Hazai győzelem', prob: probs.homeProb, odds: inputs.homeOdd },
+            { text: 'Döntetlen', prob: probs.drawProb, odds: inputs.drawOdd },
+            { text: 'Vendég győzelem', prob: probs.awayProb, odds: inputs.awayOdd },
+            { text: 'Több mint 2.5 gól', prob: probs.over25Prob, odds: inputs.over25Odd },
+            { text: 'Kevesebb mint 2.5 gól', prob: 1 - probs.over25Prob, odds: inputs.under25Odd },
+            { text: 'Mindkét csapat szerez gólt', prob: probs.bttsProb, odds: inputs.bttsYesOdd },
+            { text: 'Mindkét csapat nem szerez gólt', prob: 1 - probs.bttsProb, odds: inputs.bttsNoOdd },
+        ].filter(tip => !isNaN(tip.odds));
+        
+        allTips.sort((a,b) => b.value - a.value);
+        const portfolio = allTips.slice(0, 3);
+        let correctCount = 0;
+        
+        portfolio.forEach((tip, index) => {
+            const isCorrect = checkPrediction(tip.text, actualHomeScore, actualAwayScore);
+            if (isCorrect) correctCount++;
+            DataManager.addPrediction({
+                id: Date.now() + index,
+                teams: newLog.name,
+                predicted: tip.text,
+                isMainTip: index === 0, // The best value tip is the main tip
+                actualScore: `${actualHomeScore}-${actualAwayScore}`,
+                correct: isCorrect
+            });
+            // Update confidence for each tip in the portfolio
+            DataManager.updateConfidence(isCorrect);
         });
 
         DataManager.save();
         UIManager.renderLogs();
         
-        btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-        if (isCorrect) {
-            btn.textContent = 'Mentve! ✓';
-            btn.classList.add('bg-green-600');
-        } else {
-            btn.textContent = 'Mentve! ✗';
-            btn.classList.add('bg-orange-600');
-        }
-        btn.disabled = true;
+        const saveResultPanel = document.getElementById('save-result-panel');
+        let feedbackHTML = `<h4 class="font-bold text-gray-300 text-sm mb-2">Eredmény Kiértékelve</h4><div class="space-y-1">`;
+        portfolio.forEach(tip => {
+            const isCorrect = checkPrediction(tip.text, actualHomeScore, actualAwayScore);
+            feedbackHTML += `<div class="flex justify-between items-center text-sm p-1 rounded ${isCorrect ? 'bg-green-900/50' : 'bg-red-900/50'}"><span>${tip.text}</span><span class="font-bold text-lg">${isCorrect ? '✓' : '✗'}</span></div>`;
+        });
+        feedbackHTML += `</div>`;
+        saveResultPanel.innerHTML = feedbackHTML;
     },
     
     confirmClearDatabase: () => {

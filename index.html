@@ -11,7 +11,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
         .btn-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
         .card-hover:hover { transform: scale(1.01); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08); }
-        .loader { width: 24px; height: 24px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
+        .loader { width: 24px; height: 24px; border: 3px solid #3B82F6; border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         .main-card { background-color: #0c3355; }
         input[type=range]::-webkit-slider-thumb { background-color: #38bdf8; }
         input[type=range]::-moz-range-thumb { background-color: #38bdf8; }
@@ -34,10 +34,10 @@
                  <p id="app-welcome-user" class="text-slate-500 mt-1">Bejelentkezve: <span class="font-bold text-purple-600">krisztian</span> | <span id="data-ingest-status" class="text-green-600 font-semibold">Data Ingest: REALTIME</span></p>
              </div>
              <div class="flex items-center gap-2">
-                 <button id="open-philosophy-btn" class="bg-gray-200 text-gray-700 font-bold p-2 rounded-full shadow-md transition duration-300 btn-hover hover:bg-gray-300">
+                 <button id="open-philosophy-btn" aria-label="Rendszerfilozófia megjelenítése" class="bg-gray-200 text-gray-700 font-bold p-2 rounded-full shadow-md transition duration-300 btn-hover hover:bg-gray-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
                  </button>
-                 <button id="open-stats-btn" class="bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2 text-sm">
+                 <button id="open-stats-btn" aria-label="Statisztika megnyitása" class="bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-blue-700 flex items-center space-x-2 text-sm">
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
                    <span>Statisztika</span>
                  </button>
@@ -49,19 +49,19 @@
              <details open>
                  <summary class="font-semibold text-sky-300 cursor-pointer py-2 text-lg">Mérkőzés Adatok és Piacok</summary>
                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4 pt-2">
-                     <input type="text" id="home-team-input" placeholder="Hazai csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                     <input type="text" id="away-team-input" placeholder="Vendég csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                     <input type="text" id="home-team-input" placeholder="Hazai csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white" required>
+                     <input type="text" id="away-team-input" placeholder="Vendég csapat" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white" required>
                  </div>
                  <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                     <input type="text" inputmode="decimal" id="home-odd-input" placeholder="Hazai (1)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                     <input type="text" inputmode="decimal" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                     <input type="text" inputmode="decimal" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                     <input type="number" step="0.01" min="1" id="home-odd-input" placeholder="Hazai (1)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white" required>
+                     <input type="number" step="0.01" min="1" id="draw-odd-input" placeholder="Döntetlen (X)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white" required>
+                     <input type="number" step="0.01" min="1" id="away-odd-input" placeholder="Vendég (2)" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white" required>
                  </div>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                      <input type="text" inputmode="decimal" id="over-25-odd-input" placeholder="Over 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                      <input type="text" inputmode="decimal" id="under-25-odd-input" placeholder="Under 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                      <input type="text" inputmode="decimal" id="btts-yes-odd-input" placeholder="BTTS Igen Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
-                      <input type="text" inputmode="decimal" id="btts-no-odd-input" placeholder="BTTS Nem Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                      <input type="number" step="0.01" min="1" id="over-25-odd-input" placeholder="Over 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                      <input type="number" step="0.01" min="1" id="under-25-odd-input" placeholder="Under 2.5 Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                      <input type="number" step="0.01" min="1" id="btts-yes-odd-input" placeholder="BTTS Igen Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
+                      <input type="number" step="0.01" min="1" id="btts-no-odd-input" placeholder="BTTS Nem Odds" class="ai-input w-full px-3 py-2 text-sm rounded-lg bg-gray-700 border border-gray-600 focus:ring-2 focus:ring-sky-400 text-white">
                   </div>
              </details>
         </div>
@@ -70,7 +70,10 @@
         <div id="ai-result" class="pt-2"></div>
         
         <div id="database-section">
-            <h2 class="text-xl font-bold text-slate-800 mb-4">Meccs Adatbázis</h2>
+            <div class="flex justify-between items-center mb-4">
+                 <h2 class="text-xl font-bold text-slate-800">Meccs Adatbázis</h2>
+                 <button id="clear-db-btn" class="bg-red-600 text-white font-semibold py-1 px-3 rounded-lg shadow-md transition duration-300 btn-hover hover:bg-red-700 text-xs">Minden Törlése</button>
+            </div>
             <div id="log-list" class="space-y-3"></div>
         </div>
     </main>
@@ -80,142 +83,252 @@
         <div class="bg-gray-800 text-white w-full max-w-2xl rounded-xl shadow-2xl flex flex-col">
             <div class="flex justify-between items-center p-4 border-b border-gray-700">
                 <h3 id="modal-title" class="text-lg font-bold text-sky-300">Modal Title</h3>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+                <button id="close-modal-btn" aria-label="Bezárás" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
             </div>
             <div id="modal-content" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"></div>
+             <div id="modal-footer" class="p-4 border-t border-gray-700 text-right"></div>
         </div>
     </div>
 
 <script>
 // This is a prototype script to demonstrate the concepts of the DT-MIE platform.
 // All complex AI/ML logic is simulated for UI purposes.
-document.addEventListener('DOMContentLoaded', () => {
-    // --- APP ELEMENTS ---
-    const homeTeamInput = document.getElementById('home-team-input');
-    const awayTeamInput = document.getElementById('away-team-input');
-    const homeOddInput = document.getElementById('home-odd-input');
-    // ... other input elements
-    const aiResultDiv = document.getElementById('ai-result');
-    const modalContainer = document.getElementById('modal-container');
-    const modalTitle = document.getElementById('modal-title');
-    const modalContent = document.getElementById('modal-content');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const openStatsBtn = document.getElementById('open-stats-btn');
-    const openPhilosophyBtn = document.getElementById('open-philosophy-btn');
-    const logListDiv = document.getElementById('log-list');
 
-    // --- APP STATE ---
-    const initialLogs = [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester City - Manchester United", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "Arsenal - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }];
-    let logs = [];
-    let predictionsLog = [];
-    let analysisTimeout;
+/**
+ * Helper function to safely parse a float from an input, handling both dots and commas.
+ * @param {string} str The string to parse.
+ * @returns {number} The parsed float or NaN if invalid.
+ */
+const parseSafeFloat = (str) => {
+    if (typeof str !== 'string' || str.trim() === '') return NaN;
+    return parseFloat(str.replace(',', '.'));
+};
 
-    // --- (SIMULATED) BIVARIATE POISSON MODEL ---
-    const AI_SYSTEM = {
-        GENERATIVE_CORE: {
-            // ... The core statistical model logic remains the same ...
-            run(homeTeam, awayTeam, dataSource = logs) {
-                // Simplified simulation for demo
-                if (dataSource.length < 2) return { error: `Nem elegendő adat.` };
-                const homeProb = Math.random() * 0.6 + 0.1;
-                const drawProb = Math.random() * 0.3;
-                const awayProb = 1 - homeProb - drawProb;
-                const over25Prob = Math.random() * 0.5 + 0.2;
-                const bttsProb = Math.random() * 0.5 + 0.2;
-                return { 
-                    error: null,
-                    probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
-                    strengths: { home_attack_str: (Math.random()*0.5+1).toFixed(2), away_attack_str: (Math.random()*0.5+1).toFixed(2), home_defense_str: (Math.random()*0.5+0.8).toFixed(2), away_defense_str: (Math.random()*0.5+0.8).toFixed(2) }
-                };
-            }
-        }
-        // ... Other helper modules like DRIFT_MONITOR can be kept ...
-    };
+/**
+ * Helper function to check if a prediction was correct.
+ * @param {string} predictionText The text of the prediction.
+ * @param {number} homeScore The final home score.
+ * @param {number} awayScore The final away score.
+ * @returns {boolean} True if the prediction was correct.
+ */
+const checkPrediction = (predictionText, homeScore, awayScore) => {
+    switch (predictionText) {
+        case 'Hazai győzelem': return homeScore > awayScore;
+        case 'Döntetlen': return homeScore === awayScore;
+        case 'Vendég győzelem': return homeScore < awayScore;
+        case 'Több mint 2.5 gól': return homeScore + awayScore > 2.5;
+        case 'Kevesebb mint 2.5 gól': return homeScore + awayScore < 2.5;
+        case 'Mindkét csapat szerez gólt': return homeScore > 0 && awayScore > 0;
+        case 'Mindkét csapat nem szerez gólt': return homeScore === 0 || awayScore === 0;
+        default: return false;
+    }
+};
 
-    // --- MAIN APP LOGIC AND UI FUNCTIONS ---
-    const saveToLocalStorage = () => {
-        localStorage.setItem('vsportAdminLogs', JSON.stringify(logs));
-        localStorage.setItem('vsportAdminPredictions', JSON.stringify(predictionsLog));
-    };
-
-    const loadFromLocalStorage = () => {
-        const storedLogs = localStorage.getItem('vsportAdminLogs');
-        logs = storedLogs ? JSON.parse(storedLogs) : initialLogs;
-        const storedPredictions = localStorage.getItem('vsportAdminPredictions');
-        predictionsLog = storedPredictions ? JSON.parse(storedPredictions) : [];
-        renderLogs();
-    };
+const DataManager = {
+    logs: [],
+    predictionsLog: [],
+    initialLogs: [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester City - Manchester United", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "Arsenal - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }],
     
-    const renderLogs = () => {
-        if (!logListDiv) return;
-        logListDiv.innerHTML = logs.slice(0, 5).map(log => `
+    save: () => {
+        localStorage.setItem('vsportAdminLogs', JSON.stringify(DataManager.logs));
+        localStorage.setItem('vsportAdminPredictions', JSON.stringify(DataManager.predictionsLog));
+    },
+
+    load: () => {
+        const storedLogs = localStorage.getItem('vsportAdminLogs');
+        DataManager.logs = storedLogs ? JSON.parse(storedLogs) : DataManager.initialLogs;
+        const storedPredictions = localStorage.getItem('vsportAdminPredictions');
+        DataManager.predictionsLog = storedPredictions ? JSON.parse(storedPredictions) : [];
+    },
+    
+    clearAll: () => {
+        DataManager.logs = [];
+        DataManager.predictionsLog = [];
+        DataManager.save();
+    },
+
+    addLog: (log) => {
+        DataManager.logs.unshift(log);
+    },
+
+    addPrediction: (prediction) => {
+        DataManager.predictionsLog.push(prediction);
+    },
+
+    deleteLog: (id) => {
+        DataManager.logs = DataManager.logs.filter(l => l.id !== id);
+    }
+};
+
+const AI_SYSTEM = {
+    GENERATIVE_CORE: {
+        run(homeTeam, awayTeam, dataSource = []) {
+            if (dataSource.length < 2) return { error: `Nem elegendő historikus adat a megbízható elemzéshez.` };
+            const homeProb = Math.random() * 0.6 + 0.1;
+            const drawProb = Math.random() * 0.3;
+            const awayProb = 1 - homeProb - drawProb;
+            const over25Prob = Math.random() * 0.5 + 0.2;
+            const bttsProb = Math.random() * 0.5 + 0.2;
+            return { 
+                error: null,
+                probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
+                strengths: { home_attack_str: (Math.random()*0.5+1).toFixed(2), away_attack_str: (Math.random()*0.5+1).toFixed(2), home_defense_str: (Math.random()*0.5+0.8).toFixed(2), away_defense_str: (Math.random()*0.5+0.8).toFixed(2) }
+            };
+        }
+    }
+};
+
+const UIManager = {
+    elements: {},
+    
+    collectElements: () => {
+        UIManager.elements = {
+            homeTeamInput: document.getElementById('home-team-input'),
+            awayTeamInput: document.getElementById('away-team-input'),
+            homeOddInput: document.getElementById('home-odd-input'),
+            drawOddInput: document.getElementById('draw-odd-input'),
+            awayOddInput: document.getElementById('away-odd-input'),
+            over25OddInput: document.getElementById('over-25-odd-input'),
+            under25OddInput: document.getElementById('under-25-odd-input'),
+            bttsYesOddInput: document.getElementById('btts-yes-odd-input'),
+            bttsNoOddInput: document.getElementById('btts-no-odd-input'),
+            aiResultDiv: document.getElementById('ai-result'),
+            modalContainer: document.getElementById('modal-container'),
+            modalTitle: document.getElementById('modal-title'),
+            modalContent: document.getElementById('modal-content'),
+            modalFooter: document.getElementById('modal-footer'),
+            closeModalBtn: document.getElementById('close-modal-btn'),
+            logListDiv: document.getElementById('log-list'),
+        };
+    },
+
+    renderLogs: () => {
+        if (!UIManager.elements.logListDiv) return;
+        UIManager.elements.logListDiv.innerHTML = DataManager.logs.slice(0, 5).map(log => `
             <div class="outcome-${log.outcome} p-3 rounded-lg shadow-sm flex items-center justify-between transition card-hover text-sm">
                 <div class="font-semibold text-slate-700">${log.name}</div>
                 <div class="flex items-center gap-4">
                     <div class="font-bold text-slate-800 text-lg">${log.homeScore} - ${log.awayScore}</div>
-                    <button data-id="${log.id}" class="delete-log-btn text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>
+                    <button data-id="${log.id}" aria-label="Meccs törlése" class="delete-log-btn text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>
                 </div>
             </div>
         `).join('');
-    };
+    },
+    
+    showModal: (title, content, footer = '') => {
+        UIManager.elements.modalTitle.textContent = title;
+        UIManager.elements.modalContent.innerHTML = content;
+        UIManager.elements.modalFooter.innerHTML = footer;
+        UIManager.elements.modalContainer.classList.remove('hidden');
+    },
 
-    const runAIAnalysis = () => {
+    hideModal: () => {
+        UIManager.elements.modalContainer.classList.add('hidden');
+    },
+
+    showLoading: () => {
+        UIManager.elements.aiResultDiv.innerHTML = `<div class="p-4"><div class="flex items-center justify-center space-x-2 mt-2"><div class="loader"></div><span class="text-sm text-gray-500">DT-MIE következtetés fut...</span></div></div>`;
+    },
+
+    showError: (message) => {
+        UIManager.elements.aiResultDiv.innerHTML = `<div class="text-center p-4 text-red-500 font-semibold">${message}</div>`;
+    },
+
+    renderAnalysis: (data) => {
+        UIManager.elements.aiResultDiv.innerHTML = data;
+    }
+};
+
+const App = {
+    analysisTimeout: null,
+
+    init: () => {
+        UIManager.collectElements();
+        DataManager.load();
+        UIManager.renderLogs();
+        App.addEventListeners();
+    },
+
+    addEventListeners: () => {
+        document.querySelectorAll('.ai-input').forEach(input => {
+            input.addEventListener('input', () => {
+                clearTimeout(App.analysisTimeout);
+                App.analysisTimeout = setTimeout(App.runAIAnalysis, 500);
+            });
+        });
+        
+        document.getElementById('open-stats-btn').addEventListener('click', App.showStatistics);
+        document.getElementById('open-philosophy-btn').addEventListener('click', App.showPhilosophy);
+        document.getElementById('clear-db-btn').addEventListener('click', App.confirmClearDatabase);
+
+        UIManager.elements.closeModalBtn.addEventListener('click', UIManager.hideModal);
+        UIManager.elements.modalContainer.addEventListener('click', (e) => { 
+            if (e.target === UIManager.elements.modalContainer) UIManager.hideModal(); 
+        });
+
+        UIManager.elements.logListDiv.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-log-btn');
+            if (deleteBtn) {
+                DataManager.deleteLog(parseInt(deleteBtn.dataset.id));
+                DataManager.save();
+                UIManager.renderLogs();
+            }
+        });
+
+        UIManager.elements.aiResultDiv.addEventListener('click', (e) => {
+            if (e.target.closest('#run-causal-sim')) App.showCausalAnalysis();
+            const saveBtn = e.target.closest('.save-result-btn');
+            if(saveBtn) App.handleSaveResult(saveBtn);
+        });
+    },
+    
+    runAIAnalysis: () => {
+        const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput } = UIManager.elements;
         const homeTeam = homeTeamInput.value.trim();
         const awayTeam = awayTeamInput.value.trim();
-        const homeOdd = parseFloat(homeOddInput.value.replace(',', '.'));
-        
-        if (!homeTeam || !awayTeam || isNaN(homeOdd)) {
-            aiResultDiv.innerHTML = '<div class="text-center p-4 text-gray-500">Add meg a csapatneveket és legalább a hazai oddsot a szimulációhoz.</div>'; return;
+        const homeOdd = parseSafeFloat(homeOddInput.value);
+        const drawOdd = parseSafeFloat(drawOddInput.value);
+        const awayOdd = parseSafeFloat(awayOddInput.value);
+
+        if (!homeTeam || !awayTeam || isNaN(homeOdd) || isNaN(drawOdd) || isNaN(awayOdd)) {
+            UIManager.elements.aiResultDiv.innerHTML = '<div class="text-center p-4 text-gray-500">Kérlek tölts ki minden csapat- és 1X2 odds mezőt az elemzéshez.</div>';
+            return;
         }
         
-        aiResultDiv.innerHTML = `<div class="p-4"><div class="flex items-center justify-center space-x-2 mt-2"><div class="loader text-white"></div><span class="text-sm text-gray-500">DT-MIE következtetés fut...</span></div></div>`;
+        UIManager.showLoading();
 
         setTimeout(() => {
-            const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, logs);
-            if (result.error) { /* error handling */ return; }
+            const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, DataManager.logs);
+            if (result.error) {
+                UIManager.showError(result.error);
+                return;
+            }
 
-            // --- SIMULATING DT-MIE CONCEPTS ---
             const twins = [
                 { name: 'Twin-A (High Volatility)', description: 'Magas volatilitású piacokra optimalizálva.', active: false },
-                { name: 'Twin-B (Conservative Market)', description: 'Stabil, предсказуемый piacokra hangolva.', active: false },
+                { name: 'Twin-B (Conservative Market)', description: 'Stabil, kiszámítható piacokra hangolva.', active: false },
                 { name: 'Twin-C (Preset-driven Bias)', description: 'Erős preset-vezérelt torzításokat észlel.', active: false },
             ];
-            const activeTwinIndex = Math.floor(Math.random() * 3);
-            twins[activeTwinIndex].active = true;
-
+            twins[Math.floor(Math.random() * 3)].active = true;
             const latentState = {
                 presetWeight: (Math.random() * 0.3 + 0.1).toFixed(3),
                 seedEntropy: (Math.random() * 15 + 80).toFixed(2) + '%'
             };
-            
-            // Simplified portfolio logic for demo
-             const portfolio = [
-                { text: 'Hazai győzelem', prob: result.probs.homeProb, value: result.probs.homeProb * homeOdd -1 },
+            const portfolio = [
+                { text: 'Hazai győzelem', prob: result.probs.homeProb, value: result.probs.homeProb * homeOdd - 1 },
                 { text: 'Több mint 2.5 gól', prob: result.probs.over25Prob, value: Math.random() * 0.2 - 0.1 }
-             ];
-             
+            ];
             const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
             
             const cardHTML = `
             <div class="main-card text-white p-5 rounded-xl border-2 border-blue-800 space-y-6">
-                
-                <!-- Digital Twin Orchestrator -->
                 <div>
                     <h3 class="text-lg font-bold text-sky-300 mb-3">Digital Twin Orchestrator</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        ${twins.map(twin => `
-                        <div class="border-2 border-gray-600 rounded-lg p-3 transition duration-300 ${twin.active ? 'twin-active' : ''}">
-                            <p class="font-semibold text-sm">${twin.name}</p>
-                            <p class="text-xs text-gray-400 mt-1">${twin.description}</p>
-                        </div>
-                        `).join('')}
+                        ${twins.map(twin => `<div class="border-2 border-gray-600 rounded-lg p-3 transition duration-300 ${twin.active ? 'twin-active' : ''}"><p class="font-semibold text-sm">${twin.name}</p><p class="text-xs text-gray-400 mt-1">${twin.description}</p></div>`).join('')}
                     </div>
                 </div>
-
-                <!-- Analysis Modules -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- Left Column: Core Analysis -->
                     <div class="space-y-4">
                         <div>
                             <h4 class="font-semibold text-sky-300 mb-2">Parametric Baseline (Dixon-Coles)</h4>
@@ -236,48 +349,91 @@ document.addEventListener('DOMContentLoaded', () => {
                              <button id="run-causal-sim" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn-hover text-sm hover:bg-indigo-700">Kauzalitás & Oldalcsatorna</button>
                         </div>
                     </div>
-
-                    <!-- Right Column: Decision -->
                     <div class="space-y-4">
                         <div>
                             <h4 class="font-semibold text-sky-300 mb-2">Ensemble Decision Module</h4>
                             <div class="space-y-2">
-                                ${portfolio.map((tip, index) => `
-                                <div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}">
-                                    <p class="font-bold text-white">${tip.text}</p>
-                                    <div class="text-xs text-sky-300 flex justify-around mt-1">
-                                        <span>P: ${probToPercent(tip.prob)}</span>
-                                        ${tip.value > 0 ? `<span>Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}
-                                    </div>
-                                </div>
-                                `).join('')}
+                                ${portfolio.map((tip, index) => `<div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}"><p class="font-bold text-white">${tip.text}</p><div class="text-xs text-sky-300 flex justify-around mt-1"><span>P: ${probToPercent(tip.prob)}</span>${tip.value > 0 ? `<span>Érték: <span class="text-green-400">+${(tip.value*100).toFixed(0)}%</span></span>` : ''}</div></div>`).join('')}
                             </div>
                         </div>
                         <div class="p-3 bg-gray-600 rounded-lg text-left">
                             <h4 class="font-bold text-gray-300 text-sm mb-2">Eredmény rögzítése</h4>
                             <div class="flex items-center space-x-2">
-                                <input type="number" placeholder="H" class="actual-home-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
+                                <input type="number" placeholder="H" min="0" class="actual-home-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
                                 <span class="text-gray-400">-</span>
-                                <input type="number" placeholder="V" class="actual-away-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
+                                <input type="number" placeholder="V" min="0" class="actual-away-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
                                 <button class="save-result-btn ml-auto bg-purple-600 font-semibold py-1 px-3 rounded text-sm btn-hover hover:bg-purple-700">Mentés</button>
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>`;
-            
-            aiResultDiv.innerHTML = cardHTML;
-            
-            // Add event listener for the new button
-            document.getElementById('run-causal-sim').addEventListener('click', showCausalAnalysis);
-
+            UIManager.renderAnalysis(cardHTML);
         }, 500);
-    };
+    },
+
+    handleSaveResult: (btn) => {
+        const panel = btn.closest('.main-card');
+        const homeScoreInput = panel.querySelector('.actual-home-score');
+        const awayScoreInput = panel.querySelector('.actual-away-score');
+        const actualHomeScore = parseInt(homeScoreInput.value, 10);
+        const actualAwayScore = parseInt(awayScoreInput.value, 10);
+        
+        if (isNaN(actualHomeScore) || isNaN(actualAwayScore) || actualHomeScore < 0 || actualAwayScore < 0) {
+            homeScoreInput.classList.add('border-red-500');
+            awayScoreInput.classList.add('border-red-500');
+            return;
+        }
+        
+        homeScoreInput.classList.remove('border-red-500');
+        awayScoreInput.classList.remove('border-red-500');
+
+        const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput } = UIManager.elements;
+        const newLog = {
+            id: Date.now(),
+            name: `${homeTeamInput.value.trim()} - ${awayTeamInput.value.trim()}`,
+            home: parseSafeFloat(homeOddInput.value),
+            draw: parseSafeFloat(drawOddInput.value),
+            away: parseSafeFloat(awayOddInput.value),
+            homeScore: actualHomeScore,
+            awayScore: actualAwayScore,
+            outcome: actualHomeScore > actualAwayScore ? 'homeWin' : (actualHomeScore < actualAwayScore ? 'awayWin' : 'draw')
+        };
+        DataManager.addLog(newLog);
+
+        // This is a simplified version for demo. In a real app, you'd save the actual portfolio.
+        const prediction = { text: 'Hazai győzelem' }; // Placeholder
+        DataManager.addPrediction({
+            id: Date.now() + 1,
+            teams: newLog.name,
+            predicted: prediction.text,
+            isMainTip: true,
+            actualScore: `${actualHomeScore}-${actualAwayScore}`,
+            correct: checkPrediction(prediction.text, actualHomeScore, actualAwayScore)
+        });
+
+        DataManager.save();
+        UIManager.renderLogs();
+        
+        btn.textContent = 'Mentve!';
+        btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+        btn.classList.add('bg-green-600');
+        btn.disabled = true;
+    },
     
-    const showCausalAnalysis = () => {
-        modalTitle.textContent = "Kauzalitás & Oldalcsatorna Elemzés";
-        modalContent.innerHTML = `
+    confirmClearDatabase: () => {
+        const content = `<p>Biztosan törölni szeretnéd az összes rögzített meccset és tippet? Ez a művelet nem vonható vissza.</p>`;
+        const footer = `<button id="confirm-delete-btn" class="bg-red-600 text-white font-semibold py-2 px-4 rounded-lg btn-hover hover:bg-red-700">Igen, Törlés</button>`;
+        UIManager.showModal('Adatbázis Törlése', content, footer);
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            DataManager.clearAll();
+            UIManager.renderLogs();
+            UIManager.hideModal();
+        });
+    },
+
+    showCausalAnalysis: () => {
+        const content = `
             <div class="space-y-4 text-sm">
                 <p>A rendszer az oldalcsatorna-adatok (pl. odds frissítési időközök) alapján a következő kauzális kapcsolatot fedezte fel:</p>
                 <div class="bg-gray-900 p-3 rounded-lg">
@@ -288,14 +444,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="font-semibold">Kalibrációs Réteg Státusza:</p>
                     <p class="text-green-400">OK (Isotonic Regression) - A kimeneti valószínűségek sikeresen kalibrálva.</p>
                 </div>
-            </div>
-        `;
-        modalContainer.classList.remove('hidden');
-    };
+            </div>`;
+        UIManager.showModal("Kauzalitás & Oldalcsatorna Elemzés", content);
+    },
 
-    const showPhilosophy = () => {
-        modalTitle.textContent = "DT-MIE Rendszerfilozófia";
-        modalContent.innerHTML = `
+    showPhilosophy: () => {
+        const content = `
             <div class="space-y-4 text-sm text-gray-300">
                 <div>
                     <h4 class="font-bold text-sky-300 text-base mb-2">Miért Újszerű ez a Megközelítés?</h4>
@@ -306,28 +460,47 @@ document.addEventListener('DOMContentLoaded', () => {
                         <li><strong class="text-white">Ethical Audit-First Design:</strong> A rendszer alapvető tervezési elve az átláthatóság és az ellenőrizhetőség. Beépített monitoring és automatikus riportálási funkciók biztosítják a működés megfelelőségét.</li>
                     </ul>
                 </div>
-            </div>
-        `;
-        modalContainer.classList.remove('hidden');
-    };
+            </div>`;
+        UIManager.showModal("DT-MIE Rendszerfilozófia", content);
+    },
 
-    // --- INITIALIZATION AND EVENT LISTENERS ---
-    loadFromLocalStorage();
+    showStatistics: () => {
+        const totalTips = DataManager.predictionsLog.length;
+        const correctTips = DataManager.predictionsLog.filter(p => p.correct).length;
+        const totalMainTips = DataManager.predictionsLog.filter(p => p.isMainTip).length;
+        const correctMainTips = DataManager.predictionsLog.filter(p => p.isMainTip && p.correct).length;
+        
+        const accuracy = totalTips > 0 ? (correctTips / totalTips * 100).toFixed(1) : 0;
+        const mainTipAccuracy = totalMainTips > 0 ? (correctMainTips / totalMainTips * 100).toFixed(1) : 0;
+        const totalMatches = DataManager.logs.length;
 
-    document.querySelectorAll('.ai-input').forEach(input => {
-        input.addEventListener('input', () => {
-            clearTimeout(analysisTimeout);
-            analysisTimeout = setTimeout(runAIAnalysis, 500);
-        });
-    });
-    
-    closeModalBtn.addEventListener('click', () => modalContainer.classList.add('hidden'));
-    modalContainer.addEventListener('click', (e) => { if (e.target === modalContainer) modalContainer.classList.add('hidden'); });
-    openStatsBtn.addEventListener('click', () => { /* Add logic for stats modal */ });
-    openPhilosophyBtn.addEventListener('click', showPhilosophy);
+        const content = `
+            <div class="space-y-4 text-sm">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <p class="text-gray-400">Fő Tipp Pontosság</p>
+                        <p class="text-2xl font-bold text-sky-300">${mainTipAccuracy}%</p>
+                        <p class="text-xs text-gray-500">${correctMainTips} / ${totalMainTips}</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded-lg">
+                        <p class="text-gray-400">Teljes Pontosság</p>
+                        <p class="text-2xl font-bold text-white">${accuracy}%</p>
+                        <p class="text-xs text-gray-500">${correctTips} / ${totalTips}</p>
+                    </div>
+                    <div class="bg-gray-700 p-3 rounded-lg col-span-2 md:col-span-1">
+                        <p class="text-gray-400">Adatbázis Mérete</p>
+                        <p class="text-2xl font-bold text-white">${totalMatches}</p>
+                        <p class="text-xs text-gray-500">Rögzített meccs</p>
+                    </div>
+                </div>
+            </div>`;
+        UIManager.showModal('Statisztika', content);
+    }
+};
 
-});
+document.addEventListener('DOMContentLoaded', App.init);
 </script>
 
 </body>
 </html>
+

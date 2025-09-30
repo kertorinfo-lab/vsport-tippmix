@@ -193,8 +193,33 @@ const AI_SYSTEM = {
         run(homeTeam, awayTeam, dataSource = [], modelConfidence) {
             if (dataSource.length < 2) return { error: `Nem elegendő historikus adat a megbízható elemzéshez.` };
 
-            const homeAttack = 1 + (simpleHash(homeTeam) % 100) / 100 * 0.8;
-            const awayAttack = 1 + (simpleHash(awayTeam) % 100) / 100 * 0.8;
+            // --- Form Calculation ---
+            const calculateForm = (teamName, logs) => {
+                const teamLogs = logs.filter(l => l.name.includes(teamName)).slice(0, 5);
+                if (teamLogs.length === 0) return { score: 0, modifier: 1.0 };
+                
+                let formScore = 0;
+                teamLogs.forEach(log => {
+                    const isHome = log.name.startsWith(teamName);
+                    const homeScore = log.homeScore;
+                    const awayScore = log.awayScore;
+
+                    if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) {
+                        formScore += 3; // Win
+                    } else if (homeScore === awayScore) {
+                        formScore += 1; // Draw
+                    }
+                });
+                const maxPossibleScore = teamLogs.length * 3;
+                const formModifier = 0.8 + (formScore / maxPossibleScore) * 0.4; // Range from 0.8 (bad form) to 1.2 (good form)
+                return { score: formScore, modifier: formModifier };
+            };
+
+            const homeForm = calculateForm(homeTeam, dataSource);
+            const awayForm = calculateForm(awayTeam, dataSource);
+
+            const homeAttack = (1 + (simpleHash(homeTeam) % 100) / 100 * 0.8) * homeForm.modifier;
+            const awayAttack = (1 + (simpleHash(awayTeam) % 100) / 100 * 0.8) * awayForm.modifier;
             const homeDefense = 0.8 + (simpleHash(homeTeam + "def") % 100) / 100 * 0.6;
             const awayDefense = 0.8 + (simpleHash(awayTeam + "def") % 100) / 100 * 0.6;
 
@@ -216,11 +241,14 @@ const AI_SYSTEM = {
             const totalGoals = homeExpGoals + awayExpGoals;
             const over25Prob = Math.min(0.9, totalGoals / 4.5);
             const bttsProb = Math.min(0.85, (homeAttack * awayAttack) / 3);
+            const uncertainty = 1 - Math.max(homeProb, drawProb, awayProb);
 
             return { 
                 error: null,
                 probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
-                strengths: { home_attack_str: homeAttack.toFixed(2), away_attack_str: awayAttack.toFixed(2), home_defense_str: homeDefense.toFixed(2), away_defense_str: awayDefense.toFixed(2) }
+                strengths: { home_attack_str: homeAttack.toFixed(2), away_attack_str: awayAttack.toFixed(2), home_defense_str: homeDefense.toFixed(2), away_defense_str: awayDefense.toFixed(2) },
+                form: { home: homeForm.modifier, away: awayForm.modifier },
+                uncertainty: uncertainty
             };
         }
     }
@@ -377,10 +405,6 @@ const App = {
 
             const twins = [ { name: 'Twin-A (High Volatility)', active: false }, { name: 'Twin-B (Conservative)', active: false }, { name: 'Twin-C (Preset-driven)', active: false }, ];
             twins[simpleHash(inputs.homeTeam + inputs.awayTeam) % 3].active = true;
-            const latentState = {
-                presetWeight: (simpleHash(inputs.homeTeam) % 301 / 1000 + 0.1).toFixed(3),
-                seedEntropy: (simpleHash(inputs.awayTeam) % 15 + 80).toFixed(2) + '%'
-            };
             const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
             
             const cardHTML = `
@@ -395,16 +419,25 @@ const App = {
                     <div class="space-y-4">
                          <div>
                             <h4 class="font-semibold text-sky-300 mb-2">Modell Állapota (Online Tanulás)</h4>
-                             <div class="bg-gray-900/50 p-3 rounded-lg text-center">
-                                 <p class="text-xs text-gray-400">Jelenlegi Konfidencia</p>
-                                 <p class="text-xl font-bold text-white">${(DataManager.modelConfidence * 100).toFixed(1)}%</p>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Rejtett Állapot Becslés (SMC)</h4>
-                            <div class="grid grid-cols-2 gap-2 text-center text-sm bg-gray-900/50 p-2 rounded-lg">
-                                <div><p class="text-xs text-gray-400">Inferred Preset Súly</p><p class="font-bold">${latentState.presetWeight}</p></div>
-                                <div><p class="text-xs text-gray-400">Seed Entrópia Est.</p><p class="font-bold">${latentState.seedEntropy}</p></div>
+                             <div class="bg-gray-900/50 p-3 rounded-lg grid grid-cols-2 gap-2 text-center">
+                                 <div>
+                                    <p class="text-xs text-gray-400">Jelenlegi Konfidencia</p>
+                                    <p class="text-xl font-bold text-white">${(DataManager.modelConfidence * 100).toFixed(1)}%</p>
+                                 </div>
+                                  <div>
+                                    <p class="text-xs text-gray-400">Bizonytalanság</p>
+                                    <p class="text-xl font-bold text-white">${probToPercent(result.uncertainty)}</p>
+                                 </div>
+                                  <div class="col-span-2 grid grid-cols-2 gap-2 mt-2">
+                                     <div>
+                                        <p class="text-xs text-gray-400">Hazai Forma</p>
+                                        <p class="font-bold text-sm">${(result.form.home * 100).toFixed(0)}%</p>
+                                     </div>
+                                      <div>
+                                        <p class="text-xs text-gray-400">Vendég Forma</p>
+                                        <p class="font-bold text-sm">${(result.form.away * 100).toFixed(0)}%</p>
+                                     </div>
+                                 </div>
                             </div>
                         </div>
                          <div>
@@ -473,15 +506,14 @@ const App = {
             { text: 'Kevesebb mint 2.5 gól', prob: 1 - probs.over25Prob, odds: inputs.under25Odd },
             { text: 'Mindkét csapat szerez gólt', prob: probs.bttsProb, odds: inputs.bttsYesOdd },
             { text: 'Mindkét csapat nem szerez gólt', prob: 1 - probs.bttsProb, odds: inputs.bttsNoOdd },
-        ].filter(tip => !isNaN(tip.odds));
+        ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
+         .filter(tip => !isNaN(tip.odds));
         
         allTips.sort((a,b) => b.value - a.value);
         const portfolio = allTips.slice(0, 3);
-        let correctCount = 0;
         
         portfolio.forEach((tip, index) => {
             const isCorrect = checkPrediction(tip.text, actualHomeScore, actualAwayScore);
-            if (isCorrect) correctCount++;
             DataManager.addPrediction({
                 id: Date.now() + index,
                 teams: newLog.name,
@@ -490,7 +522,6 @@ const App = {
                 actualScore: `${actualHomeScore}-${actualAwayScore}`,
                 correct: isCorrect
             });
-            // Update confidence for each tip in the portfolio
             DataManager.updateConfidence(isCorrect);
         });
 

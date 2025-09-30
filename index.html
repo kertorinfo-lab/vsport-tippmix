@@ -92,7 +92,7 @@
 
 <script>
 // This is a prototype script to demonstrate the concepts of the DT-MIE platform.
-// All complex AI/ML logic is simulated for UI purposes.
+// All complex AI/ML logic is simulated deterministically for UI purposes.
 
 /**
  * Helper function to safely parse a float from an input, handling both dots and commas.
@@ -122,6 +122,21 @@ const checkPrediction = (predictionText, homeScore, awayScore) => {
         case 'Mindkét csapat nem szerez gólt': return homeScore === 0 || awayScore === 0;
         default: return false;
     }
+};
+
+/**
+ * A simple, deterministic hash function to generate consistent numbers from strings.
+ * @param {string} str The string to hash.
+ * @returns {number} A positive integer hash.
+ */
+const simpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
 };
 
 const DataManager = {
@@ -164,15 +179,38 @@ const AI_SYSTEM = {
     GENERATIVE_CORE: {
         run(homeTeam, awayTeam, dataSource = []) {
             if (dataSource.length < 2) return { error: `Nem elegendő historikus adat a megbízható elemzéshez.` };
-            const homeProb = Math.random() * 0.6 + 0.1;
-            const drawProb = Math.random() * 0.3;
-            const awayProb = 1 - homeProb - drawProb;
-            const over25Prob = Math.random() * 0.5 + 0.2;
-            const bttsProb = Math.random() * 0.5 + 0.2;
+
+            // Deterministic strength simulation based on team names
+            const homeAttack = 1 + (simpleHash(homeTeam) % 100) / 100 * 0.8; // 1.0 - 1.8
+            const awayAttack = 1 + (simpleHash(awayTeam) % 100) / 100 * 0.8; // 1.0 - 1.8
+            const homeDefense = 0.8 + (simpleHash(homeTeam + "def") % 100) / 100 * 0.6; // 0.8 - 1.4
+            const awayDefense = 0.8 + (simpleHash(awayTeam + "def") % 100) / 100 * 0.6; // 0.8 - 1.4
+
+            const homeExpGoals = homeAttack * awayDefense;
+            const awayExpGoals = awayAttack * homeDefense;
+
+            // Normalize expected goals to get probabilities (simplified)
+            const totalPower = homeExpGoals + awayExpGoals;
+            let homeProb = (homeExpGoals / totalPower) * 0.85; // Leave room for draws
+            let awayProb = (awayExpGoals / totalPower) * 0.85;
+            let drawProb = 1 - homeProb - awayProb;
+            
+            // Adjust if draw probability is unrealistic
+            if (drawProb < 0.15) {
+                const diff = 0.15 - drawProb;
+                drawProb = 0.15;
+                homeProb -= diff / 2;
+                awayProb -= diff / 2;
+            }
+
+            const totalGoals = homeExpGoals + awayExpGoals;
+            const over25Prob = Math.min(0.9, totalGoals / 4.5); // Heuristic
+            const bttsProb = Math.min(0.85, (homeAttack * awayAttack) / 3); // Heuristic
+
             return { 
                 error: null,
                 probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
-                strengths: { home_attack_str: (Math.random()*0.5+1).toFixed(2), away_attack_str: (Math.random()*0.5+1).toFixed(2), home_defense_str: (Math.random()*0.5+0.8).toFixed(2), away_defense_str: (Math.random()*0.5+0.8).toFixed(2) }
+                strengths: { home_attack_str: homeAttack.toFixed(2), away_attack_str: awayAttack.toFixed(2), home_defense_str: homeDefense.toFixed(2), away_defense_str: awayDefense.toFixed(2) }
             };
         }
     }
@@ -241,6 +279,7 @@ const UIManager = {
 
 const App = {
     analysisTimeout: null,
+    lastAnalysisResult: null,
 
     init: () => {
         UIManager.collectElements();
@@ -299,6 +338,8 @@ const App = {
 
         setTimeout(() => {
             const result = AI_SYSTEM.GENERATIVE_CORE.run(homeTeam, awayTeam, DataManager.logs);
+            App.lastAnalysisResult = result; // Store result for later use
+            
             if (result.error) {
                 UIManager.showError(result.error);
                 return;
@@ -309,10 +350,10 @@ const App = {
                 { name: 'Twin-B (Conservative Market)', description: 'Stabil, kiszámítható piacokra hangolva.', active: false },
                 { name: 'Twin-C (Preset-driven Bias)', description: 'Erős preset-vezérelt torzításokat észlel.', active: false },
             ];
-            twins[Math.floor(Math.random() * 3)].active = true;
+            twins[Math.floor(simpleHash(homeTeam + awayTeam) % 3)].active = true; // Deterministic twin selection
             const latentState = {
-                presetWeight: (Math.random() * 0.3 + 0.1).toFixed(3),
-                seedEntropy: (Math.random() * 15 + 80).toFixed(2) + '%'
+                presetWeight: (simpleHash(homeTeam) % 301 / 1000 + 0.1).toFixed(3),
+                seedEntropy: (simpleHash(awayTeam) % 15 + 80).toFixed(2) + '%'
             };
             const portfolio = [
                 { text: 'Hazai győzelem', prob: result.probs.homeProb, value: result.probs.homeProb * homeOdd - 1 },
@@ -359,9 +400,9 @@ const App = {
                         <div class="p-3 bg-gray-600 rounded-lg text-left">
                             <h4 class="font-bold text-gray-300 text-sm mb-2">Eredmény rögzítése</h4>
                             <div class="flex items-center space-x-2">
-                                <input type="number" placeholder="H" min="0" class="actual-home-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
+                                <input type="number" placeholder="H" min="0" class="actual-home-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center" required>
                                 <span class="text-gray-400">-</span>
-                                <input type="number" placeholder="V" min="0" class="actual-away-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center">
+                                <input type="number" placeholder="V" min="0" class="actual-away-score w-16 px-2 py-1 text-sm rounded bg-gray-800 border-gray-500 text-white text-center" required>
                                 <button class="save-result-btn ml-auto bg-purple-600 font-semibold py-1 px-3 rounded text-sm btn-hover hover:bg-purple-700">Mentés</button>
                             </div>
                         </div>
@@ -388,6 +429,11 @@ const App = {
         homeScoreInput.classList.remove('border-red-500');
         awayScoreInput.classList.remove('border-red-500');
 
+        if (!App.lastAnalysisResult) {
+            console.error("No analysis result found to save.");
+            return;
+        }
+
         const { homeTeamInput, awayTeamInput, homeOddInput, drawOddInput, awayOddInput } = UIManager.elements;
         const newLog = {
             id: Date.now(),
@@ -401,23 +447,37 @@ const App = {
         };
         DataManager.addLog(newLog);
 
-        // This is a simplified version for demo. In a real app, you'd save the actual portfolio.
-        const prediction = { text: 'Hazai győzelem' }; // Placeholder
+        const probs = App.lastAnalysisResult.probs;
+        const mainOutcomes = [
+            { text: 'Hazai győzelem', prob: probs.homeProb },
+            { text: 'Döntetlen', prob: probs.drawProb },
+            { text: 'Vendég győzelem', prob: probs.awayProb }
+        ];
+        mainOutcomes.sort((a, b) => b.prob - a.prob);
+        const bestPrediction = mainOutcomes[0];
+
+        const isCorrect = checkPrediction(bestPrediction.text, actualHomeScore, actualAwayScore);
+
         DataManager.addPrediction({
             id: Date.now() + 1,
             teams: newLog.name,
-            predicted: prediction.text,
+            predicted: bestPrediction.text,
             isMainTip: true,
             actualScore: `${actualHomeScore}-${actualAwayScore}`,
-            correct: checkPrediction(prediction.text, actualHomeScore, actualAwayScore)
+            correct: isCorrect
         });
 
         DataManager.save();
         UIManager.renderLogs();
         
-        btn.textContent = 'Mentve!';
         btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
-        btn.classList.add('bg-green-600');
+        if (isCorrect) {
+            btn.textContent = 'Mentve! ✓';
+            btn.classList.add('bg-green-600');
+        } else {
+            btn.textContent = 'Mentve! ✗';
+            btn.classList.add('bg-orange-600');
+        }
         btn.disabled = true;
     },
     

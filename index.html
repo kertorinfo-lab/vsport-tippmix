@@ -340,17 +340,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const headerLine = lines.shift().toLowerCase().trim();
             const header = headerLine.split(',').map(h => h.trim());
-            const requiredColumns = ['hometeam', 'awayteam', 'homeodd', 'drawodd', 'awayodd', 'homescore', 'awayscore'];
+            const requiredColumns = ['hometeam', 'homeodd', 'drawodd', 'awayodd', 'homescore', 'awayscore'];
             
             if (!requiredColumns.every(col => header.includes(col))) {
-                alert(`Hibás CSV formátum! A fejlécnek tartalmaznia kell a következőket: ${requiredColumns.join(', ')}`);
+                alert(`Hibás CSV formátum! A fejlécnek legalább a következőket kell tartalmaznia: ${requiredColumns.join(', ')}`);
                 return;
             }
 
             let importedCount = 0;
             let errorCount = 0;
 
-            lines.reverse().forEach(line => { // Reverse to add oldest first, keeping newest on top
+            lines.reverse().forEach(line => {
                 const values = line.split(',');
                 if(values.length < header.length) {
                     errorCount++;
@@ -358,7 +358,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 try {
                     const homeTeam = values[header.indexOf('hometeam')].trim();
-                    const awayTeam = values[header.indexOf('awayteam')].trim();
+                    const awayTeamIndex = header.indexOf('awayteam');
+                    const awayTeam = awayTeamIndex !== -1 ? values[awayTeamIndex].trim() : 'N/A';
+                    
                     const odds = {
                         home: parseFloat(values[header.indexOf('homeodd')]),
                         draw: parseFloat(values[header.indexOf('drawodd')]),
@@ -369,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         away: parseInt(values[header.indexOf('awayscore')], 10),
                     };
 
-                    if (!homeTeam || !awayTeam || isNaN(odds.home) || isNaN(score.home)) {
+                    if (!homeTeam || isNaN(odds.home) || isNaN(score.home)) {
                         throw new Error("Invalid data in row");
                     }
 

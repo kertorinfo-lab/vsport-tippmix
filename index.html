@@ -212,6 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
             home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
             draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
             away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
+            over25: parseSafeFloat(panel.querySelector('.over-25-odd-input').value),
+            under25: parseSafeFloat(panel.querySelector('.under-25-odd-input').value),
+            bttsYes: parseSafeFloat(panel.querySelector('.btts-yes-odd-input').value),
+            bttsNo: parseSafeFloat(panel.querySelector('.btts-no-odd-input').value),
         };
         const score = {
             home: parseInt(panel.querySelector('.home-score-input').value, 10),
@@ -227,8 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
         saveData();
         renderLogs();
         
-        panel.querySelector('.home-score-input').value = '';
-        panel.querySelector('.away-score-input').value = '';
+        // Clear all number inputs on the current tab after saving
+        panel.querySelectorAll('input[type="number"]').forEach(input => {
+            input.value = '';
+        });
         alert('Meccs mentve!');
     };
 
@@ -237,6 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
             home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
             draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
             away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
+            over25: parseSafeFloat(panel.querySelector('.over-25-odd-input').value),
+            bttsYes: parseSafeFloat(panel.querySelector('.btts-yes-odd-input').value),
         };
         const analysisOutput = panel.querySelector('.analysis-output');
 
@@ -248,11 +256,12 @@ document.addEventListener('DOMContentLoaded', () => {
         analysisOutput.innerHTML = '<div class="flex justify-center items-center gap-2"><div class="loader"></div><p>Elemzés...</p></div>';
 
         setTimeout(() => {
-            // Define more generous tolerances for matching
             const TOLERANCE = {
                 home: 0.20,
                 draw: 0.50,
-                away: 1.50
+                away: 1.50,
+                over25: 0.25,
+                bttsYes: 0.25,
             };
 
             const similarMatches = matchLogs.filter(log => {
@@ -260,18 +269,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isDrawSimilar = Math.abs(log.odds.draw - targetOdds.draw) <= TOLERANCE.draw;
                 const isAwaySimilar = Math.abs(log.odds.away - targetOdds.away) <= TOLERANCE.away;
                 
-                // For a match to be similar, all three main odds must be within their respective tolerances.
-                return isHomeSimilar && isDrawSimilar && isAwaySimilar;
+                if (!isHomeSimilar || !isDrawSimilar || !isAwaySimilar) {
+                    return false;
+                }
+
+                if (!isNaN(targetOdds.over25)) {
+                    if (isNaN(log.odds.over25) || Math.abs(log.odds.over25 - targetOdds.over25) > TOLERANCE.over25) {
+                        return false;
+                    }
+                }
+
+                if (!isNaN(targetOdds.bttsYes)) {
+                    if (isNaN(log.odds.bttsYes) || Math.abs(log.odds.bttsYes - targetOdds.bttsYes) > TOLERANCE.bttsYes) {
+                        return false;
+                    }
+                }
+                
+                return true;
             });
             
-            // Re-identify the pattern based on the target odds for display purposes AFTER filtering
             const awayToHomeRatio = targetOdds.away / targetOdds.home;
             const drawToHomeRatio = targetOdds.draw / targetOdds.home;
             let pattern = 'Szoros meccs';
             if (awayToHomeRatio > 5 && drawToHomeRatio > 2.5) {
                 pattern = 'Nagy favorit';
             }
-
 
             if (similarMatches.length < 3) {
                 analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 3) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`;
@@ -280,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const stats = {
                 total: similarMatches.length, homeWin_Over1_5: 0, homeWin_Under2_5: 0, awayWin_Under2_5: 0,
-                homeGoals_1: 0, homeGoals_2: 0, totalHomeGoals: 0, totalAwayGoals: 0
+                homeGoals_1: 0, totalHomeGoals: 0, totalAwayGoals: 0
             };
 
             similarMatches.forEach(match => {

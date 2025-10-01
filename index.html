@@ -22,6 +22,8 @@
         .outcome-draw { background-color: #fff3e0; border-left: 4px solid #ff9800; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .twin-active { border-color: #38bdf8; background-color: #1e40af; transform: scale(1.05); }
+        .progress-bar { background-color: #374151; }
+        .progress-bar-inner { transition: width 0.5s ease-in-out; }
     </style>
 </head>
 
@@ -182,10 +184,8 @@ const DataManager = {
     updateConfidence: (isCorrect, probability) => {
         let adjustment;
         if (isCorrect) {
-            // Reward more for correctly predicting an unlikely event (low probability)
             adjustment = 0.05 * (1 - probability);
         } else {
-            // Penalize more for incorrectly predicting a likely event (high probability)
             adjustment = -0.1 * probability;
         }
         DataManager.modelConfidence = Math.max(0.5, Math.min(1.5, DataManager.modelConfidence + adjustment));
@@ -197,27 +197,29 @@ const AI_SYSTEM = {
         run(homeTeam, awayTeam, dataSource = [], modelConfidence) {
             if (dataSource.length < 1) return { error: `Nem elegendő historikus adat a megbízható elemzéshez.` };
 
-            // --- Form Calculation ---
+            // --- Weighted Form Calculation ---
             const calculateForm = (teamName, logs) => {
-                const teamLogs = logs.filter(l => l.name.toLowerCase().includes(teamName.toLowerCase())).slice(0, 5);
+                const teamLogs = logs.filter(l => l.name.toLowerCase().includes(teamName.toLowerCase())).slice(0, 8); // Look at last 8 games
                 if (teamLogs.length === 0) return { score: 0, modifier: 1.0 };
                 
                 let formScore = 0;
-                teamLogs.forEach(log => {
+                let totalWeight = 0;
+                teamLogs.forEach((log, index) => {
+                    const weight = 1 - (index * 0.1); // More recent games have higher weight
                     const isHome = log.name.toLowerCase().startsWith(teamName.toLowerCase());
                     const homeScore = log.homeScore;
                     const awayScore = log.awayScore;
 
                     if ((isHome && homeScore > awayScore) || (!isHome && awayScore > homeScore)) {
-                        formScore += 3; // Win
+                        formScore += 3 * weight; // Win
                     } else if (homeScore === awayScore) {
-                        formScore += 1; // Draw
+                        formScore += 1 * weight; // Draw
                     }
+                    totalWeight += 3 * weight;
                 });
-                const maxPossibleScore = teamLogs.length * 3;
-                // Increased form modifier range for greater impact
-                const formModifier = 0.7 + (formScore / maxPossibleScore) * 0.6; // Range from 0.7 to 1.3
-                return { score: formScore, modifier: formModifier };
+                
+                const formModifier = 0.7 + (formScore / totalWeight) * 0.6; // Range from 0.7 to 1.3
+                return { modifier: formModifier };
             };
 
             const homeForm = calculateForm(homeTeam, dataSource);
@@ -236,23 +238,31 @@ const AI_SYSTEM = {
             let awayProb = (awayExpGoals / totalPower) * 0.85;
             let drawProb = 1 - homeProb - awayProb;
             
-            if (drawProb < 0.15 || drawProb > 0.4) {
-                 const total = homeProb + awayProb + drawProb;
-                 homeProb = homeProb/total;
-                 awayProb = awayProb/total;
-                 drawProb = drawProb/total;
-            }
+            // Normalize 1X2 probabilities
+            const total1X2Prob = homeProb + awayProb + drawProb;
+            homeProb /= total1X2Prob;
+            awayProb /= total1X2Prob;
+            drawProb /= total1X2Prob;
 
             const totalGoals = homeExpGoals + awayExpGoals;
             const over25Prob = Math.min(0.9, totalGoals / 4.5);
             const bttsProb = Math.min(0.85, (homeAttack * awayAttack) / 3);
             const uncertainty = 1 - Math.max(homeProb, drawProb, awayProb);
+            
+            // Key influencing factors simulation
+            const factors = [];
+            if(homeForm.modifier > 1.1) factors.push({text: "Javuló hazai forma", impact: "pozitív"});
+            if(awayForm.modifier < 0.9) factors.push({text: "Gyenge vendég forma", impact: "pozitív"});
+            if(modelConfidence > 1.1) factors.push({text: "Magas modell konfidencia", impact: "pozitív"});
+            if(uncertainty > 0.5) factors.push({text: "Magas bizonytalanság", impact: "negatív"});
+
 
             return { 
                 error: null,
                 probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
                 form: { home: homeForm.modifier, away: awayForm.modifier },
-                uncertainty: uncertainty
+                uncertainty: uncertainty,
+                factors: factors.slice(0, 3)
             };
         }
     }
@@ -357,7 +367,6 @@ const App = {
         });
 
         UIManager.elements.aiResultDiv.addEventListener('click', (e) => {
-            if (e.target.closest('#run-causal-sim')) App.showCausalAnalysis();
             const saveBtn = e.target.closest('.save-result-btn');
             if(saveBtn) App.handleSaveResult(saveBtn);
         });
@@ -393,7 +402,6 @@ const App = {
                 return;
             }
 
-            // Find most likely 1X2 outcome
             const mainOutcomes = [
                 { text: 'Hazai győzelem', prob: result.probs.homeProb },
                 { text: 'Döntetlen', prob: result.probs.drawProb },
@@ -402,7 +410,6 @@ const App = {
             mainOutcomes.sort((a, b) => b.prob - a.prob);
             const mostLikelyOutcome = mainOutcomes[0];
 
-            // Build portfolio based on value, with a probability threshold
             const PROBABILITY_THRESHOLD = 0.25;
             const allTips = [
                 { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: inputs.homeOdd },
@@ -413,59 +420,57 @@ const App = {
                 { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb, odds: inputs.bttsYesOdd },
                 { text: 'Mindkét csapat nem szerez gólt', prob: 1 - result.probs.bttsProb, odds: inputs.bttsNoOdd },
             ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
-             .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD);
+             .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD && tip.value > 0);
             
             allTips.sort((a,b) => b.value - a.value);
-            const portfolio = allTips.slice(0, 2); // Max 2 tips in portfolio
+            const portfolio = allTips.slice(0, 3); // Max 3 tips in portfolio
 
             const twins = [ { name: 'Twin-A (High Volatility)', active: false }, { name: 'Twin-B (Conservative)', active: false }, { name: 'Twin-C (Preset-driven)', active: false }, ];
             twins[simpleHash(inputs.homeTeam + inputs.awayTeam) % 3].active = true;
             const probToPercent = (p) => `${(p * 100).toFixed(1)}%`;
 
             let uncertaintyLabel = 'Alacsony';
-            let uncertaintyColor = 'text-green-400';
+            let uncertaintyColor = 'bg-green-500';
             if (result.uncertainty > 0.6) {
                 uncertaintyLabel = 'Magas';
-                uncertaintyColor = 'text-red-400';
+                uncertaintyColor = 'bg-red-500';
             } else if (result.uncertainty > 0.45) {
                 uncertaintyLabel = 'Közepes';
-                uncertaintyColor = 'text-yellow-400';
+                uncertaintyColor = 'bg-yellow-500';
             }
             
             const cardHTML = `
             <div class="main-card text-white p-5 rounded-xl border-2 border-blue-800 space-y-6">
-                 <div>
-                    <h3 class="text-lg font-bold text-sky-300 mb-3">Digital Twin Orchestrator</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        ${twins.map(twin => `<div class="border-2 border-gray-600 rounded-lg p-3 transition duration-300 ${twin.active ? 'twin-active' : ''}"><p class="font-semibold text-sm">${twin.name}</p></div>`).join('')}
-                    </div>
-                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-4">
                          <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Modell Állapota (Online Tanulás)</h4>
-                             <div class="bg-gray-900/50 p-3 rounded-lg grid grid-cols-2 gap-2 text-center">
+                            <h4 class="font-semibold text-sky-300 mb-2">Modell Állapota</h4>
+                             <div class="bg-gray-900/50 p-3 rounded-lg space-y-3">
                                  <div>
-                                    <p class="text-xs text-gray-400">Jelenlegi Konfidencia</p>
-                                    <p class="text-xl font-bold text-white">${(DataManager.modelConfidence * 100).toFixed(1)}%</p>
+                                    <label class="text-xs text-gray-400">Jelenlegi Konfidencia</label>
+                                    <div class="progress-bar w-full rounded-full h-2.5 mt-1">
+                                        <div class="progress-bar-inner bg-blue-500 h-2.5 rounded-full" style="width: ${((DataManager.modelConfidence - 0.5) * 100)}%"></div>
+                                    </div>
                                  </div>
                                   <div>
-                                    <p class="text-xs text-gray-400">Bizonytalanság</p>
-                                    <p class="text-xl font-bold ${uncertaintyColor}">${uncertaintyLabel}</p>
-                                 </div>
-                                  <div class="col-span-2 grid grid-cols-2 gap-2 mt-2">
-                                     <div>
-                                        <p class="text-xs text-gray-400">Hazai Forma</p>
-                                        <p class="font-bold text-sm">${(result.form.home * 100).toFixed(0)}%</p>
-                                     </div>
-                                      <div>
-                                        <p class="text-xs text-gray-400">Vendég Forma</p>
-                                        <p class="font-bold text-sm">${(result.form.away * 100).toFixed(0)}%</p>
-                                     </div>
-                                 </div>
+                                    <label class="text-xs text-gray-400">Bizonytalanság (${uncertaintyLabel})</label>
+                                    <div class="progress-bar w-full rounded-full h-2.5 mt-1">
+                                        <div class="progress-bar-inner ${uncertaintyColor} h-2.5 rounded-full" style="width: ${result.uncertainty * 100}%"></div>
+                                    </div>
+                                  </div>
                             </div>
                             ${result.uncertainty > 0.45 ? `<div class="text-center text-yellow-400 text-xs p-2 bg-yellow-900/30 rounded-md mt-2">Figyelem: A modell ${uncertaintyLabel.toLowerCase()} bizonytalanságot észlel, a predikciók pontossága csökkenhet.</div>` : ''}
                         </div>
+                        <div>
+                             <h4 class="font-semibold text-sky-300 mb-2">Befolyásoló Tényezők</h4>
+                             <div class="bg-gray-900/50 p-3 rounded-lg space-y-2 text-sm">
+                                ${result.factors.length > 0 ? result.factors.map(f => `
+                                    <div class="flex items-center"><span class="mr-2">${f.impact === 'pozitív' ? '🟢' : '🔴'}</span><span>${f.text}</span></div>
+                                `).join('') : '<p class="text-gray-400">Nincsenek kiemelkedő befolyásoló tényezők.</p>'}
+                             </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
                         <div>
                             <h4 class="font-semibold text-sky-300 mb-2">Legvalószínűbb Fő Kimenet</h4>
                             <div class="bg-sky-900/70 rounded-md p-3 text-center">
@@ -473,10 +478,8 @@ const App = {
                                 <p class="text-sm text-sky-300">Valószínűség: ${probToPercent(mostLikelyOutcome.prob)}</p>
                             </div>
                         </div>
-                    </div>
-                    <div class="space-y-4">
                         <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Érték Alapú Portfólió (Max 2, P > 25%)</h4>
+                            <h4 class="font-semibold text-sky-300 mb-2">Érték Alapú Portfólió (P > 25%)</h4>
                              ${portfolio.length > 0 && portfolio[0].value > -Infinity ? `
                                 <div class="space-y-2">
                                     ${portfolio.map((tip, index) => `<div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}"><p class="font-bold text-white">${tip.text}</p><div class="text-xs text-sky-300 flex justify-around mt-1"><span>P: ${probToPercent(tip.prob)}</span><span>Érték: <span class="${tip.value > 0 ? 'text-green-400' : 'text-red-400'}">${(tip.value*100).toFixed(0)}%</span></span></div></div>`).join('')}
@@ -537,10 +540,10 @@ const App = {
             { text: 'Mindkét csapat szerez gólt', prob: probs.bttsProb, odds: inputs.bttsYesOdd },
             { text: 'Mindkét csapat nem szerez gólt', prob: 1 - probs.bttsProb, odds: inputs.bttsNoOdd },
         ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
-         .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD);
+         .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD && tip.value > 0);
         
         allTips.sort((a,b) => b.value - a.value);
-        const portfolio = allTips.slice(0, 2);
+        const portfolio = allTips.slice(0, 3);
         
         portfolio.forEach((tip, index) => {
             const isCorrect = checkPrediction(tip.text, actualHomeScore, actualAwayScore);
@@ -583,28 +586,16 @@ const App = {
         });
     },
 
-    showCausalAnalysis: () => {
-        const content = `
-            <div class="space-y-4 text-sm">
-                <p>A rendszer az oldalcsatorna-adatok (pl. odds frissítési időközök) alapján a következő kauzális kapcsolatot fedezte fel:</p>
-                <div class="bg-gray-900 p-3 rounded-lg">
-                    <p class="font-semibold text-sky-300">Magas frissítési frekvencia &rarr; Megnövekedett piaci volatilitás &rarr; <span class="text-yellow-400">A 'Twin-A' modell aktiválása</span></p>
-                    <p class="text-xs text-gray-400 mt-2">Magyarázat: A gyors és gyakori odds-változások bizonytalan piacra utalnak, ezért a rendszer a magas volatilitásra specializálódott digitális ikertestvért részesíti előnyben a pontosabb előrejelzés érdekében.</p>
-                </div>
-            </div>`;
-        UIManager.showModal("Kauzalitás & Oldalcsatorna Elemzés", content);
-    },
-
     showPhilosophy: () => {
         const content = `
             <div class="space-y-4 text-sm text-gray-300">
                 <div>
                     <h4 class="font-bold text-sky-300 text-base mb-2">Miért Újszerű ez a Megközelítés?</h4>
                     <ul class="list-disc list-inside space-y-1">
-                        <li><strong class="text-white">Explicit + Generatív + Kauzális Kombináció:</strong> A legtöbb rendszer csak egyféle modellt használ. A DT-MIE hibrid módon ötvözi a statikus, paraméteres modelleket (mint a Dixon-Coles) a modern, generatív AI-val, és ezt kiegészíti egy kauzális, időalapú elemzési réteggel.</li>
-                        <li><strong class="text-white">Probilisztikus Rejtett Állapot Modellezés:</strong> Ahelyett, hogy egyetlen "titkos összetevőt" keresnénk, a rendszer a lehetséges rejtett állapotokat (pl. a bukméker belső beállításait) valószínűségi alapon modellezi, ami robusztusabb előrejelzést tesz lehetővé.</li>
-                        <li><strong class="text-white">Digital Twin Orchestration:</strong> Több, specializálódott hipotetikus motor ("digitális iker") fut párhuzamosan. A rendszer valós időben választja ki és súlyozza azt, amelyik a legjobban illeszkedik az aktuális piaci környezethez, így dinamikusan adaptálódik.</li>
-                        <li><strong class="text-white">Ethical Audit-First Design:</strong> A rendszer alapvető tervezési elve az átláthatóság és az ellenőrizhetőség. Beépített monitoring és automatikus riportálási funkciók biztosítják a működés megfelelőségét.</li>
+                        <li><strong class="text-white">Hibrid Modellezés:</strong> A rendszer ötvözi a statikus, paraméteres modelleket a modern, generatív AI-val, és ezt kiegészíti egy kauzális, időalapú elemzési réteggel.</li>
+                        <li><strong class="text-white">Probilisztikus Modellezés:</strong> Ahelyett, hogy egyetlen "titkos összetevőt" keresne, a rendszer a lehetséges rejtett állapotokat valószínűségi alapon modellezi, ami robusztusabb előrejelzést tesz lehetővé.</li>
+                        <li><strong class="text-white">Digital Twin Orchestration:</strong> Több, specializálódott hipotetikus motor fut párhuzamosan. A rendszer valós időben választja ki a legjobban illeszkedőt, így dinamikusan adaptálódik.</li>
+                        <li><strong class="text-white">Ethical Audit-First Design:</strong> A rendszer alapvető tervezési elve az átláthatóság. Beépített monitoring és riportálási funkciók biztosítják a működés megfelelőségét.</li>
                     </ul>
                 </div>
             </div>`;
@@ -612,36 +603,50 @@ const App = {
     },
 
     showStatistics: () => {
-        const totalTips = DataManager.predictionsLog.length;
-        const correctTips = DataManager.predictionsLog.filter(p => p.correct).length;
-        const totalMainTips = DataManager.predictionsLog.filter(p => p.isMainTip).length;
-        const correctMainTips = DataManager.predictionsLog.filter(p => p.isMainTip && p.correct).length;
+        const tipTypes = ['Hazai győzelem', 'Döntetlen', 'Vendég győzelem', 'Több mint 2.5 gól', 'Kevesebb mint 2.5 gól', 'Mindkét csapat szerez gólt', 'Mindkét csapat nem szerez gólt'];
+        const stats = {};
+        tipTypes.forEach(type => {
+            const relevantTips = DataManager.predictionsLog.filter(p => p.predicted.includes(type.split(' ')[0]));
+            stats[type] = {
+                total: relevantTips.length,
+                correct: relevantTips.filter(p => p.correct).length
+            };
+        });
+        const mainTipAccuracy = stats['Hazai győzelem'].total + stats['Döntetlen'].total + stats['Vendég győzelem'].total > 0 ? ((stats['Hazai győzelem'].correct + stats['Döntetlen'].correct + stats['Vendég győzelem'].correct) / (stats['Hazai győzelem'].total + stats['Döntetlen'].total + stats['Vendég győzelem'].total) * 100).toFixed(1) : 0;
         
-        const accuracy = totalTips > 0 ? (correctTips / totalTips * 100).toFixed(1) : 0;
-        const mainTipAccuracy = totalMainTips > 0 ? (correctMainTips / totalMainTips * 100).toFixed(1) : 0;
         const totalMatches = DataManager.logs.length;
 
         const content = `
             <div class="space-y-4 text-sm">
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
-                    <div class="bg-gray-700 p-3 rounded-lg">
-                        <p class="text-gray-400">Fő Tipp Pontosság</p>
-                        <p class="text-2xl font-bold text-sky-300">${mainTipAccuracy}%</p>
-                        <p class="text-xs text-gray-500">${correctMainTips} / ${totalMainTips}</p>
-                    </div>
-                    <div class="bg-gray-700 p-3 rounded-lg">
-                        <p class="text-gray-400">Teljes Pontosság</p>
-                        <p class="text-2xl font-bold text-white">${accuracy}%</p>
-                        <p class="text-xs text-gray-500">${correctTips} / ${totalTips}</p>
-                    </div>
-                    <div class="bg-gray-700 p-3 rounded-lg col-span-2 md:col-span-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-700 p-3 rounded-lg text-center">
                         <p class="text-gray-400">Adatbázis Mérete</p>
                         <p class="text-2xl font-bold text-white">${totalMatches}</p>
                         <p class="text-xs text-gray-500">Rögzített meccs</p>
                     </div>
+                     <div class="bg-gray-700 p-3 rounded-lg text-center">
+                        <p class="text-gray-400">1X2 Tippek Pontossága</p>
+                        <div class="w-full bg-gray-600 rounded-full h-4 my-1">
+                            <div class="bg-blue-500 h-4 rounded-full" style="width: ${mainTipAccuracy}%"></div>
+                        </div>
+                         <p class="text-lg font-bold text-sky-300">${mainTipAccuracy}%</p>
+                    </div>
+                </div>
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <h4 class="font-semibold text-sky-300 mb-2">Pontosság Piaconként</h4>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        ${Object.keys(stats).map(type => {
+                            const stat = stats[type];
+                            const acc = stat.total > 0 ? (stat.correct / stat.total * 100).toFixed(1) : 0;
+                            return `<div>
+                                <p class="flex justify-between"><span>${type}</span> <span class="font-semibold">${acc}%</span></p>
+                                <div class="w-full bg-gray-600 rounded-full h-1.5"><div class="bg-sky-400 h-1.5 rounded-full" style="width: ${acc}%"></div></div>
+                            </div>`
+                        }).join('')}
+                    </div>
                 </div>
             </div>`;
-        UIManager.showModal('Statisztika', content);
+        UIManager.showModal('Részletes Statisztika', content);
     }
 };
 

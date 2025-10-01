@@ -142,7 +142,7 @@ const simpleHash = (str) => {
 const DataManager = {
     logs: [],
     predictionsLog: [],
-    modelConfidence: 1.0, // New property to simulate model learning
+    modelConfidence: 1.0, 
     initialLogs: [ { id: 1, name: "Chelsea - West Ham", home: 1.50, draw: 4.50, away: 5.50, homeScore: 5, awayScore: 0, outcome: "homeWin" }, { id: 2, name: "Liverpool - Tottenham", home: 1.45, draw: 4.80, away: 6.00, homeScore: 4, awayScore: 2, outcome: "homeWin" }, { id: 3, name: "Manchester City - Manchester United", home: 1.35, draw: 5.50, away: 7.50, homeScore: 4, awayScore: 0, outcome: "homeWin" }, { id: 4, name: "Arsenal - Fulham", home: 1.20, draw: 6.50, away: 12.00, homeScore: 3, awayScore: 1, outcome: "homeWin" }, { id: 5, name: "Crystal Palace - Newcastle", home: 2.80, draw: 3.30, away: 2.50, homeScore: 1, awayScore: 1, outcome: "draw" }],
     
     save: () => {
@@ -179,12 +179,16 @@ const DataManager = {
         DataManager.logs = DataManager.logs.filter(l => l.id !== id);
     },
 
-    updateConfidence: (isCorrect) => {
+    updateConfidence: (isCorrect, probability) => {
+        let adjustment;
         if (isCorrect) {
-            DataManager.modelConfidence = Math.min(1.5, DataManager.modelConfidence + 0.02);
+            // Reward more for correctly predicting an unlikely event (low probability)
+            adjustment = 0.05 * (1 - probability);
         } else {
-            DataManager.modelConfidence = Math.max(0.5, DataManager.modelConfidence - 0.04);
+            // Penalize more for incorrectly predicting a likely event (high probability)
+            adjustment = -0.1 * probability;
         }
+        DataManager.modelConfidence = Math.max(0.5, Math.min(1.5, DataManager.modelConfidence + adjustment));
     }
 };
 
@@ -211,7 +215,8 @@ const AI_SYSTEM = {
                     }
                 });
                 const maxPossibleScore = teamLogs.length * 3;
-                const formModifier = 0.8 + (formScore / maxPossibleScore) * 0.4; // Range from 0.8 (bad form) to 1.2 (good form)
+                // Increased form modifier range for greater impact
+                const formModifier = 0.7 + (formScore / maxPossibleScore) * 0.6; // Range from 0.7 to 1.3
                 return { score: formScore, modifier: formModifier };
             };
 
@@ -223,7 +228,7 @@ const AI_SYSTEM = {
             const homeDefense = 0.8 + (simpleHash(homeTeam + "def") % 100) / 100 * 0.6;
             const awayDefense = 0.8 + (simpleHash(awayTeam + "def") % 100) / 100 * 0.6;
 
-            const homeExpGoals = homeAttack * awayDefense * modelConfidence; // Apply confidence
+            const homeExpGoals = homeAttack * awayDefense * modelConfidence;
             const awayExpGoals = awayAttack * homeDefense * modelConfidence;
 
             const totalPower = homeExpGoals + awayExpGoals;
@@ -231,11 +236,11 @@ const AI_SYSTEM = {
             let awayProb = (awayExpGoals / totalPower) * 0.85;
             let drawProb = 1 - homeProb - awayProb;
             
-            if (drawProb < 0.15) {
-                const diff = 0.15 - drawProb;
-                drawProb = 0.15;
-                homeProb -= diff / 2;
-                awayProb -= diff / 2;
+            if (drawProb < 0.15 || drawProb > 0.4) {
+                 const total = homeProb + awayProb + drawProb;
+                 homeProb = homeProb/total;
+                 awayProb = awayProb/total;
+                 drawProb = drawProb/total;
             }
 
             const totalGoals = homeExpGoals + awayExpGoals;
@@ -246,7 +251,6 @@ const AI_SYSTEM = {
             return { 
                 error: null,
                 probs: { homeProb, drawProb, awayProb, over25Prob, bttsProb },
-                strengths: { home_attack_str: homeAttack.toFixed(2), away_attack_str: awayAttack.toFixed(2), home_defense_str: homeDefense.toFixed(2), away_defense_str: awayDefense.toFixed(2) },
                 form: { home: homeForm.modifier, away: awayForm.modifier },
                 uncertainty: uncertainty
             };
@@ -398,7 +402,8 @@ const App = {
             mainOutcomes.sort((a, b) => b.prob - a.prob);
             const mostLikelyOutcome = mainOutcomes[0];
 
-            // Build portfolio based on value
+            // Build portfolio based on value, with a probability threshold
+            const PROBABILITY_THRESHOLD = 0.25;
             const allTips = [
                 { text: 'Hazai győzelem', prob: result.probs.homeProb, odds: inputs.homeOdd },
                 { text: 'Döntetlen', prob: result.probs.drawProb, odds: inputs.drawOdd },
@@ -408,10 +413,10 @@ const App = {
                 { text: 'Mindkét csapat szerez gólt', prob: result.probs.bttsProb, odds: inputs.bttsYesOdd },
                 { text: 'Mindkét csapat nem szerez gólt', prob: 1 - result.probs.bttsProb, odds: inputs.bttsNoOdd },
             ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
-             .filter(tip => !isNaN(tip.odds));
+             .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD);
             
             allTips.sort((a,b) => b.value - a.value);
-            const portfolio = allTips.slice(0, 3);
+            const portfolio = allTips.slice(0, 2); // Max 2 tips in portfolio
 
             const twins = [ { name: 'Twin-A (High Volatility)', active: false }, { name: 'Twin-B (Conservative)', active: false }, { name: 'Twin-C (Preset-driven)', active: false }, ];
             twins[simpleHash(inputs.homeTeam + inputs.awayTeam) % 3].active = true;
@@ -459,6 +464,7 @@ const App = {
                                      </div>
                                  </div>
                             </div>
+                            ${result.uncertainty > 0.45 ? `<div class="text-center text-yellow-400 text-xs p-2 bg-yellow-900/30 rounded-md mt-2">Figyelem: A modell ${uncertaintyLabel.toLowerCase()} bizonytalanságot észlel, a predikciók pontossága csökkenhet.</div>` : ''}
                         </div>
                         <div>
                             <h4 class="font-semibold text-sky-300 mb-2">Legvalószínűbb Fő Kimenet</h4>
@@ -470,12 +476,12 @@ const App = {
                     </div>
                     <div class="space-y-4">
                         <div>
-                            <h4 class="font-semibold text-sky-300 mb-2">Érték Alapú Portfólió (Top 3 Value)</h4>
+                            <h4 class="font-semibold text-sky-300 mb-2">Érték Alapú Portfólió (Max 2, P > 25%)</h4>
                              ${portfolio.length > 0 && portfolio[0].value > -Infinity ? `
                                 <div class="space-y-2">
                                     ${portfolio.map((tip, index) => `<div class="bg-gray-900 rounded-md p-3 ${index === 0 ? 'border border-sky-400' : ''}"><p class="font-bold text-white">${tip.text}</p><div class="text-xs text-sky-300 flex justify-around mt-1"><span>P: ${probToPercent(tip.prob)}</span><span>Érték: <span class="${tip.value > 0 ? 'text-green-400' : 'text-red-400'}">${(tip.value*100).toFixed(0)}%</span></span></div></div>`).join('')}
                                 </div>
-                             ` : `<div class="text-center text-gray-400 text-sm p-4 bg-gray-900/50 rounded-lg">Nem található pozitív értékű tipp a megadott oddsok alapján.</div>`}
+                             ` : `<div class="text-center text-gray-400 text-sm p-4 bg-gray-900/50 rounded-lg">Nem található ésszerű, pozitív értékű tipp a megadott oddsok alapján.</div>`}
                         </div>
                         <div class="p-3 bg-gray-600 rounded-lg text-left" id="save-result-panel">
                             <h4 class="font-bold text-gray-300 text-sm mb-2">Eredmény rögzítése</h4>
@@ -521,6 +527,7 @@ const App = {
         };
         DataManager.addLog(newLog);
 
+        const PROBABILITY_THRESHOLD = 0.25;
         const allTips = [
             { text: 'Hazai győzelem', prob: probs.homeProb, odds: inputs.homeOdd },
             { text: 'Döntetlen', prob: probs.drawProb, odds: inputs.drawOdd },
@@ -530,10 +537,10 @@ const App = {
             { text: 'Mindkét csapat szerez gólt', prob: probs.bttsProb, odds: inputs.bttsYesOdd },
             { text: 'Mindkét csapat nem szerez gólt', prob: 1 - probs.bttsProb, odds: inputs.bttsNoOdd },
         ].map(tip => ({ ...tip, value: !isNaN(tip.odds) ? (tip.prob * tip.odds) - 1 : -Infinity }))
-         .filter(tip => !isNaN(tip.odds));
+         .filter(tip => !isNaN(tip.odds) && tip.prob > PROBABILITY_THRESHOLD);
         
         allTips.sort((a,b) => b.value - a.value);
-        const portfolio = allTips.slice(0, 3);
+        const portfolio = allTips.slice(0, 2);
         
         portfolio.forEach((tip, index) => {
             const isCorrect = checkPrediction(tip.text, actualHomeScore, actualAwayScore);
@@ -541,11 +548,11 @@ const App = {
                 id: Date.now() + index,
                 teams: newLog.name,
                 predicted: tip.text,
-                isMainTip: index === 0, // The best value tip is the main tip
+                isMainTip: index === 0, 
                 actualScore: `${actualHomeScore}-${actualAwayScore}`,
                 correct: isCorrect
             });
-            DataManager.updateConfidence(isCorrect);
+            DataManager.updateConfidence(isCorrect, tip.prob);
         });
 
         DataManager.save();

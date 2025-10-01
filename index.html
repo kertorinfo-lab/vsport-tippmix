@@ -257,11 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             const TOLERANCE = {
-                home: 0.20,
-                draw: 0.50,
-                away: 1.50,
-                over25: 0.25,
-                bttsYes: 0.25,
+                home: 0.30,
+                draw: 0.70,
+                away: 2.00,
+                over25: 0.40,
+                bttsYes: 0.40,
             };
 
             const similarMatches = matchLogs.filter(log => {
@@ -327,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="text-center">
                         <p class="text-sm text-slate-400">Észlelt minta (${stats.total} meccs alapján):</p>
                         <p class="text-lg font-bold text-sky-400">${pattern === 'Nagy favorit' ? 'Nagy Favorit Mintázata' : 'Szoros Meccs Mintázata'}</p>
+                        <p class="text-xs text-slate-500 mt-1">(Tolerancia: H:±${TOLERANCE.home}, D:±${TOLERANCE.draw}, A:±${TOLERANCE.away})</p>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                         <div class="space-y-3">

@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '<p class="text-slate-500 text-center">Nincsenek rögzített meccsek.</p>'
             : matchLogs.map(log => `
                 <div class="bg-gray-800 p-3 rounded-lg flex flex-col md:flex-row justify-between items-center gap-2 text-sm">
-                    <div class="font-semibold text-white">${log.homeTeam} - ${log.awayTeam}</div>
+                    <div class="font-semibold text-white">${log.homeTeam || 'N/A'} - ${log.awayTeam || 'N/A'}</div>
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <span class="px-2 py-1 bg-slate-700 rounded">1: <strong>${log.odds.home.toFixed(2)}</strong></span>
                         <span class="px-2 py-1 bg-slate-700 rounded">X: <strong>${log.odds.draw.toFixed(2)}</strong></span>
@@ -240,6 +240,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const TOLERANCE = { home: 0.30, draw: 0.70, away: 2.00 };
 
             const similarMatches = matchLogs.filter(log => {
+                // FIX: Check if log.homeTeam exists before calling .toLowerCase()
+                if (!log.homeTeam) return false;
+                
                 const isTeamMatch = log.homeTeam.toLowerCase() === targetHomeTeam.toLowerCase();
                 if (!isTeamMatch) return false;
 

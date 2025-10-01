@@ -231,10 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveData();
         renderLogs();
         
-        // Clear all number inputs on the current tab after saving
-        panel.querySelectorAll('input[type="number"]').forEach(input => {
-            input.value = '';
-        });
+        // Clear only score fields after saving
+        panel.querySelector('.home-score-input').value = '';
+        panel.querySelector('.away-score-input').value = '';
         alert('Meccs mentve!');
     };
 
@@ -295,8 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 pattern = 'Nagy favorit';
             }
 
-            if (similarMatches.length < 3) {
-                analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 3) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`;
+            if (similarMatches.length < 1) { // MODIFIED: Changed from 3 to 1
+                analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 1) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`; // MODIFIED: Changed message
                 return;
             }
 
@@ -319,8 +318,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 stats.totalAwayGoals += match.score.away;
             });
             
-            const toPercent = (val) => ((val / stats.total) * 100).toFixed(0);
+            const toPercent = (val) => (val / stats.total) * 100; // Raw percent for sorting
             const toAvg = (val) => (val / stats.total).toFixed(2);
+
+            // --- Generate and sort tips ---
+            const potentialTips = [
+                { text: "Hazai nyer & Több mint 1.5 gól", percent: toPercent(stats.homeWin_Over1_5) },
+                { text: "Hazai nyer & Kevesebb mint 2.5 gól", percent: toPercent(stats.homeWin_Under2_5) },
+                { text: "Vendég nyer & Kevesebb mint 2.5 gól", percent: toPercent(stats.awayWin_Under2_5) }
+            ];
+
+            const sortedTips = potentialTips.filter(tip => tip.percent > 0).sort((a, b) => b.percent - a.percent);
+
+            let bestTipHTML = '';
+            if (sortedTips.length > 0) {
+                bestTipHTML = `
+                    <div class="mt-4 border-t border-gray-700 pt-4">
+                        <h4 class="font-semibold text-white text-center">Legvalószínűbb Kimenetel (Tipp)</h4>
+                        <div class="bg-sky-900/70 rounded-md p-3 text-center mt-2">
+                             <p class="text-lg font-bold text-white">${sortedTips[0].text}</p>
+                             <p class="text-sm text-sky-300">Előfordulás: <strong>${sortedTips[0].percent.toFixed(0)}%</strong></p>
+                        </div>
+                    </div>
+                `;
+            }
 
             analysisOutput.innerHTML = `
                 <div class="space-y-4 p-4 bg-gray-900 rounded-lg">
@@ -332,17 +353,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                         <div class="space-y-3">
                              <h4 class="font-semibold text-white">Gyakori Kombinációk</h4>
-                             <p class="flex justify-between"><span>Hazai nyer & Több mint 1.5 gól:</span> <strong>${toPercent(stats.homeWin_Over1_5)}%</strong></p>
-                             <p class="flex justify-between"><span>Hazai nyer & Kevesebb mint 2.5 gól:</span> <strong>${toPercent(stats.homeWin_Under2_5)}%</strong></p>
-                             <p class="flex justify-between"><span>Vendég nyer & Kevesebb mint 2.5 gól:</span> <strong class="text-yellow-400">${toPercent(stats.awayWin_Under2_5)}%</strong></p>
+                             <p class="flex justify-between"><span>Hazai nyer & Több mint 1.5 gól:</span> <strong>${toPercent(stats.homeWin_Over1_5).toFixed(0)}%</strong></p>
+                             <p class="flex justify-between"><span>Hazai nyer & Kevesebb mint 2.5 gól:</span> <strong>${toPercent(stats.homeWin_Under2_5).toFixed(0)}%</strong></p>
+                             <p class="flex justify-between"><span>Vendég nyer & Kevesebb mint 2.5 gól:</span> <strong class="text-yellow-400">${toPercent(stats.awayWin_Under2_5).toFixed(0)}%</strong></p>
                         </div>
                         <div class="space-y-3">
                              <h4 class="font-semibold text-white">Gól Statisztikák</h4>
                              <p class="flex justify-between"><span>Hazai gólok (átlag):</span> <strong>${toAvg(stats.totalHomeGoals)}</strong></p>
                              <p class="flex justify-between"><span>Vendég gólok (átlag):</span> <strong>${toAvg(stats.totalAwayGoals)}</strong></p>
-                             <p class="flex justify-between"><span>Hazai csapat 1 gólt szerez:</span> <strong>${toPercent(stats.homeGoals_1)}%</strong></p>
+                             <p class="flex justify-between"><span>Hazai csapat 1 gólt szerez:</span> <strong>${toPercent(stats.homeGoals_1).toFixed(0)}%</strong></p>
                         </div>
                     </div>
+                    ${bestTipHTML}
                 </div>`;
         }, 500);
     };

@@ -152,10 +152,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const switchTab = (tabId) => {
         activeTabId = tabId;
-        // Update tab buttons
-        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tabId == tabId));
-        // Update content panels
-        document.querySelectorAll('.tab-content').forEach(p => p.classList.toggle('active', p.dataset.tabId == tabId));
+        // Update tab buttons: remove 'active' from all, then add to the selected one.
+        document.querySelectorAll('.tab').forEach(t => {
+            t.classList.remove('active');
+            if (t.dataset.tabId == tabId) {
+                t.classList.add('active');
+            }
+        });
+        // Update content panels: remove 'active' from all, then add to the selected one.
+        document.querySelectorAll('.tab-content').forEach(p => {
+            p.classList.remove('active');
+             if (p.dataset.tabId == tabId) {
+                p.classList.add('active');
+            }
+        });
     };
 
     const closeTab = (tabId) => {
@@ -238,6 +248,23 @@ document.addEventListener('DOMContentLoaded', () => {
         analysisOutput.innerHTML = '<div class="flex justify-center items-center gap-2"><div class="loader"></div><p>Elemzés...</p></div>';
 
         setTimeout(() => {
+            // Define more generous tolerances for matching
+            const TOLERANCE = {
+                home: 0.20,
+                draw: 0.50,
+                away: 1.50
+            };
+
+            const similarMatches = matchLogs.filter(log => {
+                const isHomeSimilar = Math.abs(log.odds.home - targetOdds.home) <= TOLERANCE.home;
+                const isDrawSimilar = Math.abs(log.odds.draw - targetOdds.draw) <= TOLERANCE.draw;
+                const isAwaySimilar = Math.abs(log.odds.away - targetOdds.away) <= TOLERANCE.away;
+                
+                // For a match to be similar, all three main odds must be within their respective tolerances.
+                return isHomeSimilar && isDrawSimilar && isAwaySimilar;
+            });
+            
+            // Re-identify the pattern based on the target odds for display purposes AFTER filtering
             const awayToHomeRatio = targetOdds.away / targetOdds.home;
             const drawToHomeRatio = targetOdds.draw / targetOdds.home;
             let pattern = 'Szoros meccs';
@@ -245,15 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 pattern = 'Nagy favorit';
             }
 
-            const similarMatches = matchLogs.filter(log => {
-                const logAwayToHome = log.odds.away / log.odds.home;
-                const logDrawToHome = log.odds.draw / log.odds.home;
-                let logPattern = 'Szoros meccs';
-                if (logAwayToHome > 5 && logDrawToHome > 2.5) {
-                    logPattern = 'Nagy favorit';
-                }
-                return logPattern === pattern && Math.abs(log.odds.home - targetOdds.home) < 0.2;
-            });
 
             if (similarMatches.length < 3) {
                 analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 3) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`;
@@ -320,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeButton = e.target.closest('.close-tab');
 
         if (closeButton) {
+            e.stopPropagation(); // Prevent tab switching when closing
             const tabId = parseInt(tabButton.dataset.tabId, 10);
             closeTab(tabId);
         } else if (tabButton) {

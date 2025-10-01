@@ -15,6 +15,10 @@
         .card { background-color: #1f2937; border: 1px solid #374151; }
         .loader { width: 24px; height: 24px; border: 3px solid #4b5563; border-bottom-color: #38bdf8; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .tab { background-color: #374151; }
+        .tab.active { background-color: #1f2937; border-bottom-color: transparent; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -25,47 +29,20 @@
             <p class="text-slate-400 mt-1">Figyeld meg a mintákat, fedezd fel az összefüggéseket.</p>
         </div>
 
-        <!-- Data Input Section -->
-        <div class="card p-6 rounded-xl">
-            <h2 class="text-xl font-semibold mb-4 text-white">1. Adatok Rögzítése</h2>
-            <div class="space-y-4">
-                <div>
-                    <h3 class="text-sm font-medium text-slate-300 mb-2">Főpiaci Oddsok (1X2)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input type="number" step="0.01" min="1" id="home-odd-input" placeholder="Hazai (1)" class="input-field w-full p-2 rounded-lg" required>
-                        <input type="number" step="0.01" min="1" id="draw-odd-input" placeholder="Döntetlen (X)" class="input-field w-full p-2 rounded-lg" required>
-                        <input type="number" step="0.01" min="1" id="away-odd-input" placeholder="Vendég (2)" class="input-field w-full p-2 rounded-lg" required>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-sm font-medium text-slate-300 mb-2">További Piacok (Opcionális)</h3>
-                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <input type="number" step="0.01" min="1" id="over-25-odd-input" placeholder="Over 2.5" class="input-field w-full p-2 rounded-lg">
-                        <input type="number" step="0.01" min="1" id="under-25-odd-input" placeholder="Under 2.5" class="input-field w-full p-2 rounded-lg">
-                        <input type="number" step="0.01" min="1" id="btts-yes-odd-input" placeholder="BTTS Igen" class="input-field w-full p-2 rounded-lg">
-                        <input type="number" step="0.01" min="1" id="btts-no-odd-input" placeholder="BTTS Nem" class="input-field w-full p-2 rounded-lg">
-                    </div>
-                </div>
-                 <div>
-                    <h3 class="text-sm font-medium text-slate-300 mb-2">Végeredmény</h3>
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <input type="number" min="0" id="home-score-input" placeholder="Hazai gól" class="input-field flex-grow p-2 rounded-lg" required>
-                        <input type="number" min="0" id="away-score-input" placeholder="Vendég gól" class="input-field flex-grow p-2 rounded-lg" required>
-                         <button id="save-match-btn" class="btn bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg w-full md:w-auto">Meccs Mentése</button>
-                    </div>
-                </div>
+        <!-- Tab Bar -->
+        <div class="flex items-center border-b border-gray-700">
+            <div id="tab-bar" class="flex-grow flex items-center -mb-px">
+                <!-- Tabs will be injected here -->
             </div>
-        </div>
-        
-        <!-- Analysis Section -->
-        <div class="card p-6 rounded-xl">
-             <h2 class="text-xl font-semibold mb-4 text-white">2. Minta Elemzés</h2>
-             <p class="text-sm text-slate-400 mb-4">Írd be a vizsgálni kívánt oddsokat a fenti mezőkbe (az eredmény nem szükséges), majd kattints az elemzés gombra.</p>
-             <button id="run-analysis-btn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg w-full">Elemzés Futtatása</button>
-             <div id="analysis-output" class="mt-6"></div>
+            <button id="add-tab-btn" class="btn bg-gray-700 hover:bg-gray-600 text-sky-400 font-bold w-8 h-8 rounded-md flex items-center justify-center text-xl ml-2">+</button>
         </div>
 
-        <!-- Database Section -->
+        <!-- Tab Content Panels -->
+        <div id="tab-content-panels">
+            <!-- Content panels will be injected here -->
+        </div>
+
+        <!-- Database Section (Global) -->
         <div class="card p-6 rounded-xl">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-white">Rögzített Meccsek Adatbázisa</h2>
@@ -75,7 +52,6 @@
                 <!-- Log items will be injected here -->
             </div>
         </div>
-
     </main>
 
 <script>
@@ -86,28 +62,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof str !== 'string' || str.trim() === '') return NaN;
         return parseFloat(str.replace(',', '.'));
     };
-    
+
+    // --- GLOBAL STATE ---
+    let matchLogs = [];
+    let tabCounter = 0;
+    let activeTabId = null;
+
     // --- UI ELEMENTS ---
     const elements = {
-        homeOdd: document.getElementById('home-odd-input'),
-        drawOdd: document.getElementById('draw-odd-input'),
-        awayOdd: document.getElementById('away-odd-input'),
-        over25Odd: document.getElementById('over-25-odd-input'),
-        under25Odd: document.getElementById('under-25-odd-input'),
-        bttsYesOdd: document.getElementById('btts-yes-odd-input'),
-        bttsNoOdd: document.getElementById('btts-no-odd-input'),
-        homeScore: document.getElementById('home-score-input'),
-        awayScore: document.getElementById('away-score-input'),
-        saveMatchBtn: document.getElementById('save-match-btn'),
-        runAnalysisBtn: document.getElementById('run-analysis-btn'),
+        tabBar: document.getElementById('tab-bar'),
+        addTabBtn: document.getElementById('add-tab-btn'),
+        tabContentPanels: document.getElementById('tab-content-panels'),
         clearDbBtn: document.getElementById('clear-db-btn'),
         logList: document.getElementById('log-list'),
-        analysisOutput: document.getElementById('analysis-output'),
     };
-
+    
     // --- DATA MANAGEMENT ---
-    let matchLogs = [];
-
     const loadData = () => {
         const storedLogs = localStorage.getItem('oddsPatternLogs');
         matchLogs = storedLogs ? JSON.parse(storedLogs) : [];
@@ -118,6 +88,94 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('oddsPatternLogs', JSON.stringify(matchLogs));
     };
 
+    // --- TAB MANAGEMENT ---
+    const createTab = (id) => {
+        const tabId = id || ++tabCounter;
+        
+        // Create Tab Button
+        const tabButton = document.createElement('button');
+        tabButton.className = 'tab text-sm font-semibold py-2 px-4 border border-gray-700 rounded-t-lg flex items-center gap-2';
+        tabButton.dataset.tabId = tabId;
+        tabButton.innerHTML = `
+            <span>Meccs ${tabId}</span>
+            <span class="close-tab text-gray-400 hover:text-white">&times;</span>
+        `;
+        elements.tabBar.appendChild(tabButton);
+
+        // Create Content Panel
+        const panel = document.createElement('div');
+        panel.id = `tab-panel-${tabId}`;
+        panel.className = 'tab-content space-y-8';
+        panel.dataset.tabId = tabId;
+        panel.innerHTML = `
+            <div class="card p-6 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4 text-white">1. Adatok Rögzítése</h2>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-sm font-medium text-slate-300 mb-2">Főpiaci Oddsok (1X2)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="number" step="0.01" min="1" placeholder="Hazai (1)" class="input-field w-full p-2 rounded-lg home-odd-input" required>
+                            <input type="number" step="0.01" min="1" placeholder="Döntetlen (X)" class="input-field w-full p-2 rounded-lg draw-odd-input" required>
+                            <input type="number" step="0.01" min="1" placeholder="Vendég (2)" class="input-field w-full p-2 rounded-lg away-odd-input" required>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-slate-300 mb-2">További Piacok (Opcionális)</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <input type="number" step="0.01" min="1" placeholder="Over 2.5" class="input-field w-full p-2 rounded-lg over-25-odd-input">
+                            <input type="number" step="0.01" min="1" placeholder="Under 2.5" class="input-field w-full p-2 rounded-lg under-25-odd-input">
+                            <input type="number" step="0.01" min="1" placeholder="BTTS Igen" class="input-field w-full p-2 rounded-lg btts-yes-odd-input">
+                            <input type="number" step="0.01" min="1" placeholder="BTTS Nem" class="input-field w-full p-2 rounded-lg btts-no-odd-input">
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-slate-300 mb-2">Végeredmény</h3>
+                        <div class="flex items-center gap-4 flex-wrap">
+                            <input type="number" min="0" placeholder="Hazai gól" class="input-field flex-grow p-2 rounded-lg home-score-input" required>
+                            <input type="number" min="0" placeholder="Vendég gól" class="input-field flex-grow p-2 rounded-lg away-score-input" required>
+                            <button class="btn bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg w-full md:w-auto save-match-btn">Meccs Mentése</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card p-6 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4 text-white">2. Minta Elemzés</h2>
+                <p class="text-sm text-slate-400 mb-4">Írd be a vizsgálni kívánt oddsokat, majd kattints az elemzés gombra.</p>
+                <button class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg w-full run-analysis-btn">Elemzés Futtatása</button>
+                <div class="mt-6 analysis-output"></div>
+            </div>
+        `;
+        elements.tabContentPanels.appendChild(panel);
+        
+        switchTab(tabId);
+    };
+
+    const switchTab = (tabId) => {
+        activeTabId = tabId;
+        // Update tab buttons
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tabId == tabId));
+        // Update content panels
+        document.querySelectorAll('.tab-content').forEach(p => p.classList.toggle('active', p.dataset.tabId == tabId));
+    };
+
+    const closeTab = (tabId) => {
+        if (document.querySelectorAll('.tab').length <= 1) return; // Don't close the last tab
+
+        const tabToRemove = document.querySelector(`.tab[data-tab-id='${tabId}']`);
+        const panelToRemove = document.getElementById(`tab-panel-${tabId}`);
+        
+        tabToRemove.remove();
+        panelToRemove.remove();
+
+        if (activeTabId === tabId) {
+            // Switch to the last remaining tab
+            const lastTab = document.querySelector('.tab:last-of-type');
+            if (lastTab) {
+                switchTab(parseInt(lastTab.dataset.tabId, 10));
+            }
+        }
+    };
+    
     // --- UI RENDERING ---
     const renderLogs = () => {
         elements.logList.innerHTML = matchLogs.length === 0 
@@ -139,19 +197,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- CORE LOGIC ---
-    const handleSaveMatch = () => {
+    const handleSaveMatch = (panel) => {
         const odds = {
-            home: parseSafeFloat(elements.homeOdd.value),
-            draw: parseSafeFloat(elements.drawOdd.value),
-            away: parseSafeFloat(elements.awayOdd.value),
-            over25: parseSafeFloat(elements.over25Odd.value),
-            under25: parseSafeFloat(elements.under25Odd.value),
-            bttsYes: parseSafeFloat(elements.bttsYesOdd.value),
-            bttsNo: parseSafeFloat(elements.bttsNoOdd.value),
+            home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
+            draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
+            away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
         };
         const score = {
-            home: parseInt(elements.homeScore.value, 10),
-            away: parseInt(elements.awayScore.value, 10),
+            home: parseInt(panel.querySelector('.home-score-input').value, 10),
+            away: parseInt(panel.querySelector('.away-score-input').value, 10),
         };
 
         if (isNaN(odds.home) || isNaN(odds.draw) || isNaN(odds.away) || isNaN(score.home) || isNaN(score.away)) {
@@ -163,28 +217,27 @@ document.addEventListener('DOMContentLoaded', () => {
         saveData();
         renderLogs();
         
-        // Clear input fields after saving
-        Object.values(elements).forEach(el => {
-            if(el.tagName === 'INPUT' && el.id !== 'run-analysis-btn') el.value = '';
-        });
+        panel.querySelector('.home-score-input').value = '';
+        panel.querySelector('.away-score-input').value = '';
+        alert('Meccs mentve!');
     };
 
-    const handleRunAnalysis = () => {
+    const handleRunAnalysis = (panel) => {
         const targetOdds = {
-            home: parseSafeFloat(elements.homeOdd.value),
-            draw: parseSafeFloat(elements.drawOdd.value),
-            away: parseSafeFloat(elements.awayOdd.value),
+            home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
+            draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
+            away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
         };
+        const analysisOutput = panel.querySelector('.analysis-output');
 
         if (isNaN(targetOdds.home) || isNaN(targetOdds.draw) || isNaN(targetOdds.away)) {
-            elements.analysisOutput.innerHTML = `<p class="text-yellow-400">Az elemzéshez add meg legalább a főpiaci (1X2) oddsokat.</p>`;
+            analysisOutput.innerHTML = `<p class="text-yellow-400">Az elemzéshez add meg legalább a főpiaci (1X2) oddsokat.</p>`;
             return;
         }
         
-        elements.analysisOutput.innerHTML = '<div class="flex justify-center items-center gap-2"><div class="loader"></div><p>Elemzés...</p></div>';
+        analysisOutput.innerHTML = '<div class="flex justify-center items-center gap-2"><div class="loader"></div><p>Elemzés...</p></div>';
 
-        setTimeout(() => { // Simulate processing
-            // 1. Determine Pattern
+        setTimeout(() => {
             const awayToHomeRatio = targetOdds.away / targetOdds.home;
             const drawToHomeRatio = targetOdds.draw / targetOdds.home;
             let pattern = 'Szoros meccs';
@@ -192,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 pattern = 'Nagy favorit';
             }
 
-            // 2. Filter Matches by Pattern
             const similarMatches = matchLogs.filter(log => {
                 const logAwayToHome = log.odds.away / log.odds.home;
                 const logDrawToHome = log.odds.draw / log.odds.home;
@@ -200,30 +252,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (logAwayToHome > 5 && logDrawToHome > 2.5) {
                     logPattern = 'Nagy favorit';
                 }
-                // Also check if the absolute home odd is somewhat close
                 return logPattern === pattern && Math.abs(log.odds.home - targetOdds.home) < 0.2;
             });
 
             if (similarMatches.length < 3) {
-                elements.analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 3) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`;
+                analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 3) hasonló meccs az adatbázisban a megbízható elemzéshez. Találat: ${similarMatches.length} db.</p>`;
                 return;
             }
 
-            // 3. Calculate New Stats
             const stats = {
-                total: similarMatches.length,
-                homeWin_Over1_5: 0,
-                homeWin_Under2_5: 0,
-                awayWin_Under2_5: 0,
-                homeGoals_1: 0,
-                homeGoals_2: 0,
-                totalHomeGoals: 0,
-                totalAwayGoals: 0
+                total: similarMatches.length, homeWin_Over1_5: 0, homeWin_Under2_5: 0, awayWin_Under2_5: 0,
+                homeGoals_1: 0, homeGoals_2: 0, totalHomeGoals: 0, totalAwayGoals: 0
             };
 
             similarMatches.forEach(match => {
                 const totalGoals = match.score.home + match.score.away;
-                // Combinations
                 if (match.score.home > match.score.away) {
                     if (totalGoals > 1.5) stats.homeWin_Over1_5++;
                     if (totalGoals < 2.5) stats.homeWin_Under2_5++;
@@ -231,19 +274,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (match.score.home < match.score.away) {
                     if (totalGoals < 2.5) stats.awayWin_Under2_5++;
                 }
-                // Home Goals
                 if (match.score.home === 1) stats.homeGoals_1++;
-                if (match.score.home === 2) stats.homeGoals_2++;
-                // Averages
                 stats.totalHomeGoals += match.score.home;
                 stats.totalAwayGoals += match.score.away;
             });
             
-            // 4. Render New UI
             const toPercent = (val) => ((val / stats.total) * 100).toFixed(0);
             const toAvg = (val) => (val / stats.total).toFixed(2);
 
-            elements.analysisOutput.innerHTML = `
+            analysisOutput.innerHTML = `
                 <div class="space-y-4 p-4 bg-gray-900 rounded-lg">
                     <div class="text-center">
                         <p class="text-sm text-slate-400">Észlelt minta (${stats.total} meccs alapján):</p>
@@ -263,25 +302,57 @@ document.addEventListener('DOMContentLoaded', () => {
                              <p class="flex justify-between"><span>Hazai csapat 1 gólt szerez:</span> <strong>${toPercent(stats.homeGoals_1)}%</strong></p>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }, 500);
     };
 
-    // --- EVENT LISTENERS ---
-    elements.saveMatchBtn.addEventListener('click', handleSaveMatch);
-    elements.runAnalysisBtn.addEventListener('click', handleRunAnalysis);
+    // --- GLOBAL EVENT LISTENERS ---
+    elements.addTabBtn.addEventListener('click', () => {
+        if(document.querySelectorAll('.tab').length < 5) {
+             createTab();
+        } else {
+            alert("Maximum 5 fület nyithatsz meg egyszerre.");
+        }
+    });
+
+    elements.tabBar.addEventListener('click', (e) => {
+        const tabButton = e.target.closest('.tab');
+        const closeButton = e.target.closest('.close-tab');
+
+        if (closeButton) {
+            const tabId = parseInt(tabButton.dataset.tabId, 10);
+            closeTab(tabId);
+        } else if (tabButton) {
+            const tabId = parseInt(tabButton.dataset.tabId, 10);
+            switchTab(tabId);
+        }
+    });
+    
+    elements.tabContentPanels.addEventListener('click', (e) => {
+        const panel = e.target.closest('.tab-content');
+        if (!panel) return;
+
+        if (e.target.matches('.save-match-btn')) {
+            handleSaveMatch(panel);
+        } else if (e.target.matches('.run-analysis-btn')) {
+            handleRunAnalysis(panel);
+        }
+    });
+
     elements.clearDbBtn.addEventListener('click', () => {
         if (confirm('Biztosan törölni szeretnéd az összes rögzített meccset?')) {
             matchLogs = [];
             saveData();
             renderLogs();
-            elements.analysisOutput.innerHTML = '';
+            // Clear all analysis outputs
+            document.querySelectorAll('.analysis-output').forEach(el => el.innerHTML = '');
         }
     });
 
     // --- INITIALIZATION ---
     loadData();
+    createTab(1); // Create the first tab on load
+
 });
 </script>
 

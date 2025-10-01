@@ -44,15 +44,19 @@
 
         <!-- Database Section (Global) -->
         <div class="card p-6 rounded-xl">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h2 class="text-xl font-semibold text-white">Rögzített Meccsek Adatbázisa</h2>
-                <button id="clear-db-btn" class="btn bg-red-800 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-lg text-xs">Adatbázis Törlése</button>
+                <div class="flex gap-2">
+                    <button id="import-csv-btn" class="btn bg-green-700 hover:bg-green-600 text-white font-semibold py-1 px-3 rounded-lg text-xs">Importálás CSV-ből</button>
+                    <button id="clear-db-btn" class="btn bg-red-800 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-lg text-xs">Adatbázis Törlése</button>
+                </div>
             </div>
             <div id="log-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
                 <!-- Log items will be injected here -->
             </div>
         </div>
     </main>
+    <input type="file" id="csv-importer" class="hidden" accept=".csv">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -74,6 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
         addTabBtn: document.getElementById('add-tab-btn'),
         tabContentPanels: document.getElementById('tab-content-panels'),
         clearDbBtn: document.getElementById('clear-db-btn'),
+        importCsvBtn: document.getElementById('import-csv-btn'),
+        csvImporter: document.getElementById('csv-importer'),
         logList: document.getElementById('log-list'),
     };
     
@@ -240,7 +246,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const TOLERANCE = { home: 0.30, draw: 0.70, away: 2.00 };
 
             const similarMatches = matchLogs.filter(log => {
-                // FIX: Check if log.homeTeam exists before calling .toLowerCase()
                 if (!log.homeTeam) return false;
                 
                 const isTeamMatch = log.homeTeam.toLowerCase() === targetHomeTeam.toLowerCase();
@@ -320,6 +325,81 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
         }, 500);
     };
+    
+    const handleCsvImport = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length < 2) {
+                alert('A CSV fájl üres vagy csak fejlécet tartalmaz.');
+                return;
+            }
+
+            const headerLine = lines.shift().toLowerCase().trim();
+            const header = headerLine.split(',').map(h => h.trim());
+            const requiredColumns = ['hometeam', 'awayteam', 'homeodd', 'drawodd', 'awayodd', 'homescore', 'awayscore'];
+            
+            if (!requiredColumns.every(col => header.includes(col))) {
+                alert(`Hibás CSV formátum! A fejlécnek tartalmaznia kell a következőket: ${requiredColumns.join(', ')}`);
+                return;
+            }
+
+            let importedCount = 0;
+            let errorCount = 0;
+
+            lines.reverse().forEach(line => { // Reverse to add oldest first, keeping newest on top
+                const values = line.split(',');
+                if(values.length < header.length) {
+                    errorCount++;
+                    return;
+                }
+                try {
+                    const homeTeam = values[header.indexOf('hometeam')].trim();
+                    const awayTeam = values[header.indexOf('awayteam')].trim();
+                    const odds = {
+                        home: parseFloat(values[header.indexOf('homeodd')]),
+                        draw: parseFloat(values[header.indexOf('drawodd')]),
+                        away: parseFloat(values[header.indexOf('awayodd')]),
+                    };
+                    const score = {
+                        home: parseInt(values[header.indexOf('homescore')], 10),
+                        away: parseInt(values[header.indexOf('awayscore')], 10),
+                    };
+
+                    if (!homeTeam || !awayTeam || isNaN(odds.home) || isNaN(score.home)) {
+                        throw new Error("Invalid data in row");
+                    }
+
+                    matchLogs.unshift({ id: Date.now() + importedCount, homeTeam, awayTeam, odds, score });
+                    importedCount++;
+
+                } catch (err) {
+                    errorCount++;
+                    console.error("Hiba a CSV sor feldolgozása közben:", line, err);
+                }
+            });
+
+            if (importedCount > 0) {
+                saveData();
+                renderLogs();
+            }
+            alert(`${importedCount} meccs sikeresen importálva. ${errorCount > 0 ? `${errorCount} sor hibás volt.` : ''}`);
+            
+            event.target.value = ''; 
+        };
+        
+        reader.onerror = () => {
+            alert('Hiba történt a fájl olvasása közben.');
+        };
+
+        reader.readAsText(file);
+    };
+
 
     // --- GLOBAL EVENT LISTENERS ---
     elements.addTabBtn.addEventListener('click', () => {
@@ -353,6 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.analysis-output').forEach(el => el.innerHTML = '');
         }
     });
+    
+    elements.importCsvBtn.addEventListener('click', () => elements.csvImporter.click());
+    elements.csvImporter.addEventListener('change', handleCsvImport);
 
     // --- INITIALIZATION ---
     loadData();

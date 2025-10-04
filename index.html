@@ -39,9 +39,10 @@
             </div>
         </header>
 
-        <div class="text-center">
+        <div class="text-center space-y-4">
+            <h2 id="tips-date-header" class="text-xl font-semibold text-slate-300"></h2>
             <button id="generate-tips-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
-                Napi Tippek Lekérése
+                Mai Tippek Lekérése
             </button>
         </div>
 
@@ -57,25 +58,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- MOCK DATABASE & SIMULATION LOGIC ---
 
     const mockMatches = [
-        // Fix candidates (AI prob > 80%)
-        { home: "Bayern München", away: "Heidenheim", odds: { "1": 1.18, "X": 8.00, "2": 15.00 }, ai_prob: 0.82, ev: 1.03 },
-        { home: "Manchester City", away: "Luton Town", odds: { "1": 1.15, "X": 9.00, "2": 17.00 }, ai_prob: 0.85, ev: 1.02 },
-        { home: "PSG", away: "Clermont Foot", odds: { "1": 1.22, "X": 7.50, "2": 12.00 }, ai_prob: 0.81, ev: 1.04 },
-        { home: "Real Madrid", away: "Getafe", odds: { "1": 1.25, "X": 6.50, "2": 11.00 }, ai_prob: 0.83, ev: 1.09 },
+        // Today's Matches (2025-10-04)
+        { home: "Bayern München", away: "Heidenheim", date: "2025-10-04", odds: { "1": 1.18, "X": 8.00, "2": 15.00 }, ai_prob: 0.82, ev: 1.03 },
+        { home: "Manchester City", away: "Luton Town", date: "2025-10-04", odds: { "1": 1.15, "X": 9.00, "2": 17.00 }, ai_prob: 0.85, ev: 1.02 },
+        { home: "Arsenal", away: "Aston Villa", date: "2025-10-04", odds: { "1": 1.50, "X": 4.50, "2": 6.00 }, ai_prob: 0.70, ev: 1.11 },
+        { home: "Liverpool", away: "Crystal Palace", date: "2025-10-04", odds: { "1": 1.40, "X": 5.00, "2": 7.50 }, ai_prob: 0.75, ev: 1.13 },
+        { home: "Tottenham", away: "Nottingham Forest", date: "2025-10-04", odds: { "1": 1.61, "X": 4.20, "2": 5.00 }, ai_prob: 0.64, ev: 1.23 },
+        { home: "Bologna", away: "Monza", date: "2025-10-04", odds: { "1": 1.75, "X": 3.75, "2": 4.50 }, ai_prob: 0.60, ev: 1.25 },
+        { home: "Everton", away: "Burnley", date: "2025-10-04", odds: { "1": 1.80, "X": 3.50, "2": 4.33 }, ai_prob: 0.58, ev: 1.30 },
+        { home: "Freiburg", away: "RB Leipzig", date: "2025-10-04", odds: { "1": 4.00, "X": 3.80, "2": 1.80 }, ai_prob: 0.56, ev: 1.25, tip: "2" },
+        { home: "Sevilla", away: "Mallorca", date: "2025-10-04", odds: { "1": 1.90, "X": 3.40, "2": 4.00 }, ai_prob: 0.55, ev: 1.28 },
+        { home: "Real Madrid", away: "Getafe", date: "2025-10-04", odds: { "1": 1.25, "X": 6.50, "2": 11.00 }, ai_prob: 0.83, ev: 1.09 },
+        { home: "Inter Milan", away: "Cagliari", date: "2025-10-04", odds: { "1": 1.30, "X": 5.50, "2": 9.00 }, ai_prob: 0.78, ev: 1.08 },
+        { home: "AS Roma", away: "Lazio", date: "2025-10-04", odds: { "1": 2.40, "X": 3.30, "2": 2.90 }, ai_prob: 0.68, ev: 1.70, tip: "1" },
 
-        // Közepes candidates (AI prob 65-80%)
-        { home: "Arsenal", away: "Aston Villa", odds: { "1": 1.50, "X": 4.50, "2": 6.00 }, ai_prob: 0.70, ev: 1.11 },
-        { home: "Liverpool", away: "Crystal Palace", odds: { "1": 1.40, "X": 5.00, "2": 7.50 }, ai_prob: 0.75, ev: 1.13 },
-        { home: "Inter Milan", away: "Cagliari", odds: { "1": 1.30, "X": 5.50, "2": 9.00 }, ai_prob: 0.78, ev: 1.08 },
-        { home: "Borussia Dortmund", away: "Stuttgart", odds: { "1": 2.20, "X": 3.60, "2": 3.00 }, ai_prob: 0.66, ev: 1.52, tip: "1" },
-        { home: "AS Roma", away: "Lazio", odds: { "1": 2.40, "X": 3.30, "2": 2.90 }, ai_prob: 0.68, ev: 1.70, tip: "1" },
-
-        // Nagy tétes candidates (AI prob 55-65%, high EV)
-        { home: "Tottenham", away: "Nottingham Forest", odds: { "1": 1.61, "X": 4.20, "2": 5.00 }, ai_prob: 0.64, ev: 1.23 },
-        { home: "Bologna", away: "Monza", odds: { "1": 1.75, "X": 3.75, "2": 4.50 }, ai_prob: 0.60, ev: 1.25 },
-        { home: "Everton", away: "Burnley", odds: { "1": 1.80, "X": 3.50, "2": 4.33 }, ai_prob: 0.58, ev: 1.30 },
-        { home: "Freiburg", away: "RB Leipzig", odds: { "1": 4.00, "X": 3.80, "2": 1.80 }, ai_prob: 0.56, ev: 1.25, tip: "2" },
-        { home: "Sevilla", away: "Mallorca", odds: { "1": 1.90, "X": 3.40, "2": 4.00 }, ai_prob: 0.55, ev: 1.28 }
+        // Other days for context
+        { home: "PSG", away: "Clermont Foot", date: "2025-10-03", odds: { "1": 1.22, "X": 7.50, "2": 12.00 }, ai_prob: 0.81, ev: 1.04 },
+        { home: "Borussia Dortmund", away: "Stuttgart", date: "2025-10-05", odds: { "1": 2.20, "X": 3.60, "2": 3.00 }, ai_prob: 0.66, ev: 1.52, tip: "1" }
     ];
 
     const getReason = (match) => {
@@ -86,7 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const generateTips = () => {
-        const shuffled = mockMatches.sort(() => 0.5 - Math.random());
+        // Simulate getting today's date
+        const today = "2025-10-04";
+
+        // Filter for today's matches
+        const todaysMatches = mockMatches.filter(match => match.date === today);
+
+        const shuffled = todaysMatches.sort(() => 0.5 - Math.random());
         const tips = {
             fix: [],
             kozepes: [],
@@ -130,6 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderTips = (tips) => {
         const container = document.getElementById('tips-container');
+
+        if (tips.fix.length === 0 && tips.kozepes.length === 0 && tips['nagy-tetes'].length === 0) {
+            container.innerHTML = `<div class="card text-center p-8 rounded-lg">
+                <h2 class="text-xl font-semibold text-slate-300">A mai napra nincsenek elérhető AI tippek.</h2>
+                <p class="text-slate-400 mt-2">Kérlek, próbáld újra holnap, vagy ellenőrizd az adatforrásokat.</p>
+            </div>`;
+            return;
+        }
+
         container.innerHTML = `
             <section id="fix-tips" class="category-fix">
                 <h2 class="text-2xl font-bold mb-4 text-green-400 card-header">Fix Tippek</h2>
@@ -159,6 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<div class="loader mx-auto"></div>';
         btn.disabled = true;
+        
+        const today = new Date('2025-10-04');
+        const formattedDate = today.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('tips-date-header').textContent = `Tippek a mai napra: ${formattedDate}`;
 
         setTimeout(() => {
             const tips = generateTips();
@@ -173,3 +191,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+

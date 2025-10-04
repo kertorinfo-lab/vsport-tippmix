@@ -3,447 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Odds Minta Elemző</title>
+    <title>AI Foci Tippelő Rendszer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #e5e7eb; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0d1117; color: #c9d1d9; }
+        .card { background-color: #161b22; border: 1px solid #30363d; }
         .btn { transition: all 0.2s ease-in-out; }
-        .btn:hover { transform: translateY(-2px); }
-        .input-field { background-color: #374151; border-color: #4b5563; }
-        .input-field:focus { background-color: #4b5563; border-color: #38bdf8; ring: 0; }
-        .card { background-color: #1f2937; border: 1px solid #374151; }
-        .loader { width: 24px; height: 24px; border: 3px solid #4b5563; border-bottom-color: #38bdf8; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .loader { width: 24px; height: 24px; border: 3px solid #30363d; border-bottom-color: #58a6ff; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .tab { background-color: #374151; }
-        .tab.active { background-color: #1f2937; border-bottom-color: transparent; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        
+        .category-fix .card-header { border-left: 4px solid #28a745; } /* Green */
+        .category-kozepes .card-header { border-left: 4px solid #ffc107; } /* Yellow */
+        .category-nagy-tetes .card-header { border-left: 4px solid #dc3545; } /* Red */
     </style>
 </head>
 <body class="p-4 md:p-8">
 
-    <main class="max-w-6xl mx-auto space-y-8">
-        <div>
-            <h1 class="text-3xl md:text-4xl font-bold text-sky-400">Odds Minta Elemző</h1>
-            <p class="text-slate-400 mt-1">Figyeld meg a mintákat, fedezd fel az összefüggéseket.</p>
-        </div>
-
-        <!-- Tab Bar -->
-        <div class="flex items-center border-b border-gray-700">
-            <div id="tab-bar" class="flex-grow flex items-center -mb-px">
-                <!-- Tabs will be injected here -->
+    <main class="max-w-7xl mx-auto space-y-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-white">AI Tippelő Rendszer</h1>
+                <p class="text-slate-400 mt-1">Napi 9 tipp, AI által kategorizálva és elemezve.</p>
             </div>
-            <button id="add-tab-btn" class="btn bg-gray-700 hover:bg-gray-600 text-sky-400 font-bold w-8 h-8 rounded-md flex items-center justify-center text-xl ml-2">+</button>
-        </div>
-
-        <!-- Tab Content Panels -->
-        <div id="tab-content-panels">
-            <!-- Content panels will be injected here -->
-        </div>
-
-        <!-- Database Section (Global) -->
-        <div class="card p-6 rounded-xl">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                <h2 class="text-xl font-semibold text-white">Rögzített Meccsek Adatbázisa</h2>
-                <div class="flex gap-2">
-                    <button id="import-csv-btn" class="btn bg-green-700 hover:bg-green-600 text-white font-semibold py-1 px-3 rounded-lg text-xs">Importálás CSV-ből</button>
-                    <button id="clear-db-btn" class="btn bg-red-800 hover:bg-red-700 text-white font-semibold py-1 px-3 rounded-lg text-xs">Adatbázis Törlése</button>
+            <div class="flex items-center gap-4">
+                <div class="card p-3 rounded-lg text-center">
+                    <p class="text-xs font-semibold text-slate-400">ROI (szimulált)</p>
+                    <p id="roi-stat" class="text-lg font-bold text-green-400">+7.8%</p>
+                </div>
+                <div class="card p-3 rounded-lg text-center">
+                    <p class="text-xs font-semibold text-slate-400">Találati Arány</p>
+                    <p id="winrate-stat" class="text-lg font-bold text-sky-400">68%</p>
                 </div>
             </div>
-            <div id="log-list" class="space-y-3 max-h-96 overflow-y-auto pr-2">
-                <!-- Log items will be injected here -->
-            </div>
+        </header>
+
+        <div class="text-center">
+            <button id="generate-tips-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
+                Napi Tippek Lekérése
+            </button>
         </div>
+
+        <div id="tips-container" class="space-y-8">
+            <!-- Tip categories will be injected here -->
+        </div>
+
     </main>
-    <input type="file" id="csv-importer" class="hidden" accept=".csv">
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- UTILITY FUNCTIONS ---
-    const parseSafeFloat = (str) => {
-        if (typeof str !== 'string' || str.trim() === '') return NaN;
-        return parseFloat(str.replace(',', '.'));
+    // --- MOCK DATABASE & SIMULATION LOGIC ---
+
+    const mockMatches = [
+        // Fix candidates (AI prob > 80%)
+        { home: "Bayern München", away: "Heidenheim", odds: { "1": 1.18, "X": 8.00, "2": 15.00 }, ai_prob: 0.82, ev: 1.03 },
+        { home: "Manchester City", away: "Luton Town", odds: { "1": 1.15, "X": 9.00, "2": 17.00 }, ai_prob: 0.85, ev: 1.02 },
+        { home: "PSG", away: "Clermont Foot", odds: { "1": 1.22, "X": 7.50, "2": 12.00 }, ai_prob: 0.81, ev: 1.04 },
+        { home: "Real Madrid", away: "Getafe", odds: { "1": 1.25, "X": 6.50, "2": 11.00 }, ai_prob: 0.83, ev: 1.09 },
+
+        // Közepes candidates (AI prob 65-80%)
+        { home: "Arsenal", away: "Aston Villa", odds: { "1": 1.50, "X": 4.50, "2": 6.00 }, ai_prob: 0.70, ev: 1.11 },
+        { home: "Liverpool", away: "Crystal Palace", odds: { "1": 1.40, "X": 5.00, "2": 7.50 }, ai_prob: 0.75, ev: 1.13 },
+        { home: "Inter Milan", away: "Cagliari", odds: { "1": 1.30, "X": 5.50, "2": 9.00 }, ai_prob: 0.78, ev: 1.08 },
+        { home: "Borussia Dortmund", away: "Stuttgart", odds: { "1": 2.20, "X": 3.60, "2": 3.00 }, ai_prob: 0.66, ev: 1.52, tip: "1" },
+        { home: "AS Roma", away: "Lazio", odds: { "1": 2.40, "X": 3.30, "2": 2.90 }, ai_prob: 0.68, ev: 1.70, tip: "1" },
+
+        // Nagy tétes candidates (AI prob 55-65%, high EV)
+        { home: "Tottenham", away: "Nottingham Forest", odds: { "1": 1.61, "X": 4.20, "2": 5.00 }, ai_prob: 0.64, ev: 1.23 },
+        { home: "Bologna", away: "Monza", odds: { "1": 1.75, "X": 3.75, "2": 4.50 }, ai_prob: 0.60, ev: 1.25 },
+        { home: "Everton", away: "Burnley", odds: { "1": 1.80, "X": 3.50, "2": 4.33 }, ai_prob: 0.58, ev: 1.30 },
+        { home: "Freiburg", away: "RB Leipzig", odds: { "1": 4.00, "X": 3.80, "2": 1.80 }, ai_prob: 0.56, ev: 1.25, tip: "2" },
+        { home: "Sevilla", away: "Mallorca", odds: { "1": 1.90, "X": 3.40, "2": 4.00 }, ai_prob: 0.55, ev: 1.28 }
+    ];
+
+    const getReason = (match) => {
+        if (match.ai_prob > 0.8) return "Kiemelkedő forma és hazai pálya előny.";
+        if (match.ev > 1.4) return "Piaci alulértékelés, magas érték (EV).";
+        if (match.ai_prob > 0.65) return "Stabil forma és xG mutatók alapján.";
+        return "Kedvező oddsok a becsült valószínűséghez képest.";
     };
 
-    // --- GLOBAL STATE ---
-    let matchLogs = [];
-    let tabCounter = 0;
-    let activeTabId = null;
+    const generateTips = () => {
+        const shuffled = mockMatches.sort(() => 0.5 - Math.random());
+        const tips = {
+            fix: [],
+            kozepes: [],
+            "nagy-tetes": [],
+        };
 
-    // --- UI ELEMENTS ---
-    const elements = {
-        tabBar: document.getElementById('tab-bar'),
-        addTabBtn: document.getElementById('add-tab-btn'),
-        tabContentPanels: document.getElementById('tab-content-panels'),
-        clearDbBtn: document.getElementById('clear-db-btn'),
-        importCsvBtn: document.getElementById('import-csv-btn'),
-        csvImporter: document.getElementById('csv-importer'),
-        logList: document.getElementById('log-list'),
-    };
-    
-    // --- DATA MANAGEMENT ---
-    const loadData = () => {
-        const storedLogs = localStorage.getItem('oddsPatternLogs');
-        matchLogs = storedLogs ? JSON.parse(storedLogs) : [];
-        renderLogs();
-    };
+        shuffled.forEach(match => {
+            const tipKey = match.tip || "1"; // Default to home win
+            
+            if (tips.fix.length < 3 && match.ai_prob > 0.80 && match.ev >= 1.05) {
+                tips.fix.push({ ...match, selectedTip: tipKey, reason: getReason(match) });
+            } else if (tips.kozepes.length < 3 && match.ai_prob >= 0.65 && match.ai_prob <= 0.80 && match.ev >= 1.10) {
+                tips.kozepes.push({ ...match, selectedTip: tipKey, reason: getReason(match) });
+            } else if (tips["nagy-tetes"].length < 3 && match.ai_prob >= 0.55 && match.ai_prob < 0.65 && match.ev >= 1.25) {
+                tips["nagy-tetes"].push({ ...match, selectedTip: tipKey, reason: getReason(match) });
+            }
+        });
 
-    const saveData = () => {
-        localStorage.setItem('oddsPatternLogs', JSON.stringify(matchLogs));
+        return tips;
     };
 
-    // --- TAB MANAGEMENT ---
-    const createTab = (id) => {
-        const tabId = id || ++tabCounter;
-        
-        const tabButton = document.createElement('button');
-        tabButton.className = 'tab text-sm font-semibold py-2 px-4 border border-gray-700 rounded-t-lg flex items-center gap-2';
-        tabButton.dataset.tabId = tabId;
-        tabButton.innerHTML = `
-            <span>Meccs ${tabId}</span>
-            <span class="close-tab text-gray-400 hover:text-white">&times;</span>
-        `;
-        elements.tabBar.appendChild(tabButton);
+    // --- UI RENDERING ---
 
-        const panel = document.createElement('div');
-        panel.id = `tab-panel-${tabId}`;
-        panel.className = 'tab-content space-y-8';
-        panel.dataset.tabId = tabId;
-        panel.innerHTML = `
-            <div class="card p-6 rounded-xl">
-                <h2 class="text-xl font-semibold mb-4 text-white">1. Adatok Rögzítése</h2>
-                <div class="space-y-4">
-                    <div>
-                        <h3 class="text-sm font-medium text-slate-300 mb-2">Csapatok</h3>
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="text" placeholder="Hazai csapat" class="input-field w-full p-2 rounded-lg home-team-input" required>
-                            <input type="text" placeholder="Vendég csapat" class="input-field w-full p-2 rounded-lg away-team-input" required>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-medium text-slate-300 mb-2">Főpiaci Oddsok (1X2)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input type="number" step="0.01" min="1" placeholder="Hazai (1)" class="input-field w-full p-2 rounded-lg home-odd-input" required>
-                            <input type="number" step="0.01" min="1" placeholder="Döntetlen (X)" class="input-field w-full p-2 rounded-lg draw-odd-input" required>
-                            <input type="number" step="0.01" min="1" placeholder="Vendég (2)" class="input-field w-full p-2 rounded-lg away-odd-input" required>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-medium text-slate-300 mb-2">További Piacok (Opcionális)</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <input type="number" step="0.01" min="1" placeholder="Over 2.5" class="input-field w-full p-2 rounded-lg over-25-odd-input">
-                            <input type="number" step="0.01" min="1" placeholder="Under 2.5" class="input-field w-full p-2 rounded-lg under-25-odd-input">
-                            <input type="number" step="0.01" min="1" placeholder="BTTS Igen" class="input-field w-full p-2 rounded-lg btts-yes-odd-input">
-                            <input type="number" step="0.01" min="1" placeholder="BTTS Nem" class="input-field w-full p-2 rounded-lg btts-no-odd-input">
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-medium text-slate-300 mb-2">Végeredmény</h3>
-                        <div class="flex items-center gap-4 flex-wrap">
-                            <input type="number" min="0" placeholder="Hazai gól" class="input-field flex-grow p-2 rounded-lg home-score-input" required>
-                            <input type="number" min="0" placeholder="Vendég gól" class="input-field flex-grow p-2 rounded-lg away-score-input" required>
-                            <button class="btn bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-6 rounded-lg w-full md:w-auto save-match-btn">Meccs Mentése</button>
-                        </div>
-                    </div>
+    const createTipCardHTML = (match) => {
+        return `
+            <div class="card rounded-lg p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <p class="font-bold text-white">${match.home} - ${match.away}</p>
+                    <p class="text-sm font-semibold bg-gray-700 px-2 py-1 rounded">${(match.odds[match.selectedTip]).toFixed(2)}</p>
+                </div>
+                <div>
+                    <p class="font-bold text-lg text-sky-400">${match.selectedTip === "1" ? "Hazai győzelem" : (match.selectedTip === "X" ? "Döntetlen" : "Vendég győzelem")}</p>
+                    <p class="text-sm text-slate-400">AI Valószínűség: <span class="font-semibold">${(match.ai_prob * 100).toFixed(0)}%</span></p>
+                </div>
+                <div class="text-xs text-gray-400 border-t border-gray-700 pt-2">
+                    <p><span class="font-semibold text-gray-300">Elemzés:</span> ${match.reason}</p>
                 </div>
             </div>
-            <div class="card p-6 rounded-xl">
-                <h2 class="text-xl font-semibold mb-4 text-white">2. Minta Elemzés</h2>
-                <p class="text-sm text-slate-400 mb-4">Add meg a csapatnevet és a vizsgálni kívánt oddsokat, majd kattints az elemzés gombra.</p>
-                <button class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg w-full run-analysis-btn">Elemzés Futtatása</button>
-                <div class="mt-6 analysis-output"></div>
-            </div>
         `;
-        elements.tabContentPanels.appendChild(panel);
-        
-        switchTab(tabId);
     };
 
-    const switchTab = (tabId) => {
-        activeTabId = tabId;
-        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tabId == tabId));
-        document.querySelectorAll('.tab-content').forEach(p => p.classList.toggle('active', p.dataset.tabId == tabId));
-    };
-
-    const closeTab = (tabId) => {
-        if (document.querySelectorAll('.tab').length <= 1) return;
-        const tabToRemove = document.querySelector(`.tab[data-tab-id='${tabId}']`);
-        const panelToRemove = document.getElementById(`tab-panel-${tabId}`);
-        tabToRemove.remove();
-        panelToRemove.remove();
-        if (activeTabId === tabId) {
-            const lastTab = document.querySelector('.tab:last-of-type');
-            if (lastTab) switchTab(parseInt(lastTab.dataset.tabId, 10));
-        }
+    const renderTips = (tips) => {
+        const container = document.getElementById('tips-container');
+        container.innerHTML = `
+            <section id="fix-tips" class="category-fix">
+                <h2 class="text-2xl font-bold mb-4 text-green-400 card-header">Fix Tippek</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${tips.fix.map(createTipCardHTML).join('')}
+                </div>
+            </section>
+            <section id="kozepes-tips" class="category-kozepes">
+                <h2 class="text-2xl font-bold mb-4 text-yellow-400 card-header">Közepes Tétes Tippek</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${tips.kozepes.map(createTipCardHTML).join('')}
+                </div>
+            </section>
+            <section id="nagy-tetes-tips" class="category-nagy-tetes">
+                <h2 class="text-2xl font-bold mb-4 text-red-400 card-header">Nagy Tétes Tippek</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${tips['nagy-tetes'].map(createTipCardHTML).join('')}
+                </div>
+            </section>
+        `;
     };
     
-    const renderLogs = () => {
-        elements.logList.innerHTML = matchLogs.length === 0 
-            ? '<p class="text-slate-500 text-center">Nincsenek rögzített meccsek.</p>'
-            : matchLogs.map(log => `
-                <div class="bg-gray-800 p-3 rounded-lg flex flex-col md:flex-row justify-between items-center gap-2 text-sm">
-                    <div class="font-semibold text-white">${log.homeTeam || 'N/A'} - ${log.awayTeam || 'N/A'}</div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <span class="px-2 py-1 bg-slate-700 rounded">1: <strong>${log.odds.home.toFixed(2)}</strong></span>
-                        <span class="px-2 py-1 bg-slate-700 rounded">X: <strong>${log.odds.draw.toFixed(2)}</strong></span>
-                        <span class="px-2 py-1 bg-slate-700 rounded">2: <strong>${log.odds.away.toFixed(2)}</strong></span>
-                    </div>
-                    <div class="text-2xl font-bold text-sky-400">
-                        ${log.score.home} - ${log.score.away}
-                    </div>
-                </div>
-            `).join('');
-    };
+    // --- EVENT LISTENERS ---
 
-    const handleSaveMatch = (panel) => {
-        const homeTeam = panel.querySelector('.home-team-input').value.trim();
-        const awayTeam = panel.querySelector('.away-team-input').value.trim();
-        const odds = {
-            home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
-            draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
-            away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
-        };
-        const score = {
-            home: parseInt(panel.querySelector('.home-score-input').value, 10),
-            away: parseInt(panel.querySelector('.away-score-input').value, 10),
-        };
-
-        if (!homeTeam || !awayTeam || isNaN(odds.home) || isNaN(odds.draw) || isNaN(odds.away) || isNaN(score.home) || isNaN(score.away)) {
-            alert('Kérlek töltsd ki a kötelező (csapatnév, 1X2 odds, eredmény) mezőket!');
-            return;
-        }
-
-        matchLogs.unshift({ id: Date.now(), homeTeam, awayTeam, odds, score });
-        saveData();
-        renderLogs();
-        
-        panel.querySelector('.home-score-input').value = '';
-        panel.querySelector('.away-score-input').value = '';
-        alert('Meccs mentve!');
-    };
-
-    const handleRunAnalysis = (panel) => {
-        const targetHomeTeam = panel.querySelector('.home-team-input').value.trim();
-        const targetOdds = {
-            home: parseSafeFloat(panel.querySelector('.home-odd-input').value),
-            draw: parseSafeFloat(panel.querySelector('.draw-odd-input').value),
-            away: parseSafeFloat(panel.querySelector('.away-odd-input').value),
-        };
-        const analysisOutput = panel.querySelector('.analysis-output');
-
-        if (!targetHomeTeam || isNaN(targetOdds.home) || isNaN(targetOdds.draw) || isNaN(targetOdds.away)) {
-            analysisOutput.innerHTML = `<p class="text-yellow-400">Az elemzéshez add meg a hazai csapat nevét és a főpiaci (1X2) oddsokat.</p>`;
-            return;
-        }
-        
-        analysisOutput.innerHTML = '<div class="flex justify-center items-center gap-2"><div class="loader"></div><p>Elemzés...</p></div>';
+    document.getElementById('generate-tips-btn').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<div class="loader mx-auto"></div>';
+        btn.disabled = true;
 
         setTimeout(() => {
-            const TOLERANCE = { home: 0.30, draw: 0.70, away: 2.00 };
-
-            const similarMatches = matchLogs.filter(log => {
-                if (!log.homeTeam) return false;
-                
-                const isTeamMatch = log.homeTeam.toLowerCase() === targetHomeTeam.toLowerCase();
-                if (!isTeamMatch) return false;
-
-                const isHomeSimilar = Math.abs(log.odds.home - targetOdds.home) <= TOLERANCE.home;
-                const isDrawSimilar = Math.abs(log.odds.draw - targetOdds.draw) <= TOLERANCE.draw;
-                const isAwaySimilar = Math.abs(log.odds.away - targetOdds.away) <= TOLERANCE.away;
-                
-                return isHomeSimilar && isDrawSimilar && isAwaySimilar;
-            });
-
-            if (similarMatches.length < 1) {
-                analysisOutput.innerHTML = `<p class="text-slate-400">Nincs elegendő (min. 1) hasonló meccs az adatbázisban ehhez a csapathoz és odds-konstellációhoz. Találat: ${similarMatches.length} db.</p>`;
-                return;
-            }
-
-            const stats = {
-                total: similarMatches.length, homeWin_Over1_5: 0, homeWin_Under2_5: 0, awayWin_Under2_5: 0,
-                homeGoals_1: 0, totalHomeGoals: 0, totalAwayGoals: 0, homeWins3plus: 0
-            };
-
-            similarMatches.forEach(match => {
-                const totalGoals = match.score.home + match.score.away;
-                if (match.score.home > match.score.away) {
-                    if (totalGoals > 1.5) stats.homeWin_Over1_5++;
-                    if (totalGoals < 2.5) stats.homeWin_Under2_5++;
-                    if (match.score.home >= 3) stats.homeWins3plus++;
-                }
-                if (match.score.home < match.score.away) {
-                    if (totalGoals < 2.5) stats.awayWin_Under2_5++;
-                }
-                if (match.score.home === 1) stats.homeGoals_1++;
-                stats.totalHomeGoals += match.score.home;
-                stats.totalAwayGoals += match.score.away;
-            });
-            
-            const toPercent = (val) => (val / stats.total) * 100;
-            const toAvg = (val) => (val / stats.total).toFixed(2);
-
-            const potentialTips = [
-                { text: "Hazai nyer & Több mint 1.5 gól", percent: toPercent(stats.homeWin_Over1_5) },
-                { text: "Hazai nyer & Kevesebb mint 2.5 gól", percent: toPercent(stats.homeWin_Under2_5) },
-                { text: "Hazai csapat legalább 3 gólt szerez", percent: toPercent(stats.homeWins3plus) },
-                { text: "Vendég nyer & Kevesebb mint 2.5 gól", percent: toPercent(stats.awayWin_Under2_5) }
-            ];
-
-            const sortedTips = potentialTips.filter(tip => tip.percent > 0).sort((a, b) => b.percent - a.percent);
-            const bestTipHTML = sortedTips.length > 0 ? `
-                <div class="mt-4 border-t border-gray-700 pt-4">
-                    <h4 class="font-semibold text-white text-center">Legvalószínűbb Kimenetel (Tipp)</h4>
-                    <div class="bg-sky-900/70 rounded-md p-3 text-center mt-2">
-                         <p class="text-lg font-bold text-white">${sortedTips[0].text}</p>
-                         <p class="text-sm text-sky-300">Előfordulás: <strong>${sortedTips[0].percent.toFixed(0)}%</strong></p>
-                    </div>
-                </div>` : '';
-
-            analysisOutput.innerHTML = `
-                <div class="space-y-4 p-4 bg-gray-900 rounded-lg">
-                    <div class="text-center">
-                        <p class="text-sm text-slate-400">Elemzés a(z) <strong class="text-white">${targetHomeTeam}</strong> korábbi meccseire (${stats.total} találat):</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                        <div class="space-y-3">
-                             <h4 class="font-semibold text-white">Gyakori Kombinációk</h4>
-                             <p class="flex justify-between"><span>Hazai nyer & 1.5 gól felett:</span> <strong>${toPercent(stats.homeWin_Over1_5).toFixed(0)}%</strong></p>
-                             <p class="flex justify-between"><span>Hazai nyer & 2.5 gól alatt:</span> <strong>${toPercent(stats.homeWin_Under2_5).toFixed(0)}%</strong></p>
-                             <p class="flex justify-between"><span>Vendég nyer & 2.5 gól alatt:</span> <strong class="text-yellow-400">${toPercent(stats.awayWin_Under2_5).toFixed(0)}%</strong></p>
-                        </div>
-                        <div class="space-y-3">
-                             <h4 class="font-semibold text-white">Gól Statisztikák</h4>
-                             <p class="flex justify-between"><span>Hazai gólok (átlag):</span> <strong>${toAvg(stats.totalHomeGoals)}</strong></p>
-                             <p class="flex justify-between"><span>Hazai 3+ gólt szerez (nyertes meccsen):</span> <strong>${toPercent(stats.homeWins3plus).toFixed(0)}%</strong></p>
-                        </div>
-                    </div>
-                    ${bestTipHTML}
-                </div>`;
-        }, 500);
-    };
-    
-    const handleCsvImport = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const text = e.target.result;
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            
-            if (lines.length < 2) {
-                alert('A CSV fájl üres vagy csak fejlécet tartalmaz.');
-                return;
-            }
-
-            const headerLine = lines.shift().toLowerCase().trim();
-            const header = headerLine.split(',').map(h => h.trim());
-            const requiredColumns = ['hometeam', 'homeodd', 'drawodd', 'awayodd', 'homescore', 'awayscore'];
-            
-            if (!requiredColumns.every(col => header.includes(col))) {
-                alert(`Hibás CSV formátum! A fejlécnek legalább a következőket kell tartalmaznia: ${requiredColumns.join(', ')}`);
-                return;
-            }
-
-            let importedCount = 0;
-            let errorCount = 0;
-
-            lines.reverse().forEach(line => {
-                const values = line.split(',');
-                if(values.length < header.length) {
-                    errorCount++;
-                    return;
-                }
-                try {
-                    const homeTeam = values[header.indexOf('hometeam')].trim();
-                    const awayTeamIndex = header.indexOf('awayteam');
-                    const awayTeam = awayTeamIndex !== -1 ? values[awayTeamIndex].trim() : 'N/A';
-                    
-                    const odds = {
-                        home: parseFloat(values[header.indexOf('homeodd')]),
-                        draw: parseFloat(values[header.indexOf('drawodd')]),
-                        away: parseFloat(values[header.indexOf('awayodd')]),
-                    };
-                    const score = {
-                        home: parseInt(values[header.indexOf('homescore')], 10),
-                        away: parseInt(values[header.indexOf('awayscore')], 10),
-                    };
-
-                    if (!homeTeam || isNaN(odds.home) || isNaN(score.home)) {
-                        throw new Error("Invalid data in row");
-                    }
-
-                    matchLogs.unshift({ id: Date.now() + importedCount, homeTeam, awayTeam, odds, score });
-                    importedCount++;
-
-                } catch (err) {
-                    errorCount++;
-                    console.error("Hiba a CSV sor feldolgozása közben:", line, err);
-                }
-            });
-
-            if (importedCount > 0) {
-                saveData();
-                renderLogs();
-            }
-            alert(`${importedCount} meccs sikeresen importálva. ${errorCount > 0 ? `${errorCount} sor hibás volt.` : ''}`);
-            
-            event.target.value = ''; 
-        };
-        
-        reader.onerror = () => {
-            alert('Hiba történt a fájl olvasása közben.');
-        };
-
-        reader.readAsText(file);
-    };
-
-
-    // --- GLOBAL EVENT LISTENERS ---
-    elements.addTabBtn.addEventListener('click', () => {
-        if(document.querySelectorAll('.tab').length < 5) createTab();
-        else alert("Maximum 5 fület nyithatsz meg egyszerre.");
+            const tips = generateTips();
+            renderTips(tips);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 1500); // Simulate API call
     });
-
-    elements.tabBar.addEventListener('click', (e) => {
-        const tabButton = e.target.closest('.tab');
-        const closeButton = e.target.closest('.close-tab');
-        if (closeButton) {
-            e.stopPropagation();
-            closeTab(parseInt(tabButton.dataset.tabId, 10));
-        } else if (tabButton) {
-            switchTab(parseInt(tabButton.dataset.tabId, 10));
-        }
-    });
-    
-    elements.tabContentPanels.addEventListener('click', (e) => {
-        const panel = e.target.closest('.tab-content');
-        if (!panel) return;
-        if (e.target.matches('.save-match-btn')) handleSaveMatch(panel);
-        else if (e.target.matches('.run-analysis-btn')) handleRunAnalysis(panel);
-    });
-
-    elements.clearDbBtn.addEventListener('click', () => {
-        if (confirm('Biztosan törölni szeretnéd az összes rögzített meccset?')) {
-            matchLogs = [];
-            saveData();
-            renderLogs();
-            document.querySelectorAll('.analysis-output').forEach(el => el.innerHTML = '');
-        }
-    });
-    
-    elements.importCsvBtn.addEventListener('click', () => elements.csvImporter.click());
-    elements.csvImporter.addEventListener('change', handleCsvImport);
-
-    // --- INITIALIZATION ---
-    loadData();
-    createTab(1); // Create the first tab on load
 
 });
 </script>
 
 </body>
 </html>
-

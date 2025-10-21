@@ -1,277 +1,345 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Foci Tippelő Rendszer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0d1117; color: #c9d1d9; }
-        .card { background-color: #161b22; border: 1px solid #30363d; }
-        .btn { transition: all 0.2s ease-in-out; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
-        .loader { width: 24px; height: 24px; border: 3px solid #30363d; border-bottom-color: #58a6ff; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .category-fix .card-header { border-left: 4px solid #28a745; } /* Green */
-        .category-kozepes .card-header { border-left: 4px solid #ffc107; } /* Yellow */
-        .category-nagy-tetes .card-header { border-left: 4px solid #dc3545; } /* Red */
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Biztonsági Tippek</title>
+    <!-- Tailwind CSS betöltése a gyors és modern stílusért -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Egyedi betűtípus és finom átmenetek a jobb felhasználói élményért */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            /* Átlátszó háttér a sötét témához */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn {
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
 
-    <main class="max-w-7xl mx-auto space-y-8">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-white">AI Tippelő Rendszer</h1>
-                <p class="text-slate-400 mt-1">Napi 9 tipp, AI által kategorizálva és elemezve.</p>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="card p-3 rounded-lg text-center">
-                    <p class="text-xs font-semibold text-slate-400">ROI (szimulált)</p>
-                    <p id="roi-stat" class="text-lg font-bold text-green-400">+7.8%</p>
-                </div>
-                <div class="card p-3 rounded-lg text-center">
-                    <p class="text-xs font-semibold text-slate-400">Találati Arány</p>
-                    <p id="winrate-stat" class="text-lg font-bold text-sky-400">68%</p>
-                </div>
-            </div>
-        </header>
+    <div class="w-full max-w-md mx-auto">
 
-        <div class="text-center space-y-4">
-            <h2 id="tips-date-header" class="text-xl font-semibold text-slate-300"></h2>
-            <button id="generate-tips-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg">
-                Mai Tippek Lekérése
-            </button>
-        </div>
+        <!-- EMAIL MEGADÁSA NÉZET -->
+        <div id="login-view">
+            <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
+                <h1 class="text-3xl font-bold text-center text-cyan-400">AI Biztonsági Tippek</h1>
+                <p class="text-center text-gray-400">Add meg az email címed a belépéshez.</p>
+                <div>
+                    <label for="email-input" class="block text-sm font-medium text-gray-300 mb-2">Email cím</label>
+                    <input type="email" id="email-input" placeholder="neved@example.com" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <button id="request-code-btn" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow-lg">
+                    Tovább
+                </button>
+                <p id="login-message" class="text-center text-red-400 text-sm h-4"></p>
+            </div>
+        </div>
+        
+        <!-- KÓD MEGADÁSA NÉZET (rejtett) -->
+        <div id="code-view" class="hidden">
+            <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
+                 <h1 class="text-3xl font-bold text-center text-cyan-400">Kód megerősítése</h1>
+                 <p class="text-center text-gray-400">Elküldtünk egy kódot a(z) <span id="user-email-display" class="font-bold text-white"></span> címre.</p>
+                 <p id="test-code-display" class="text-center bg-gray-800 p-2 rounded-md text-yellow-300"></p>
+                 <div>
+                    <label for="code-input" class="block text-sm font-medium text-gray-300 mb-2">Megerősítő kód</label>
+                    <input type="text" id="code-input" placeholder="******" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white text-center tracking-[0.5em] focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                 </div>
+                 <button id="verify-code-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg">
+                    Belépés
+                </button>
+                 <p id="code-message" class="text-center text-red-400 text-sm h-4"></p>
+                 <button id="back-to-login-btn" class="text-center w-full text-sm text-gray-400 hover:text-white">Vissza</button>
+            </div>
+        </div>
 
-        <div id="tips-container" class="space-y-8">
-            <!-- Tip categories will be injected here -->
-        </div>
+        <!-- FELHASZNÁLÓI VEZÉRLŐPULT (rejtett) -->
+        <div id="dashboard-view" class="hidden">
+             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-cyan-400">Tippek</h1>
+                    <button id="user-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
+                </div>
+                <!-- INGYENES TIPP SZEKCIÓ -->
+                <div id="free-tip-section" class="space-y-4">
+                    <h2 class="text-xl font-semibold text-center text-green-400">A nap ingyenes tippje</h2>
+                    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
+                        <p class="text-gray-400 text-sm mb-2">Mérkőzés</p>
+                        <p class="text-xl font-bold"><span id="free-home-display">Nincs</span> vs <span id="free-away-display">megadva</span></p>
+                        <div class="flex justify-around items-center mt-4">
+                            <div>
+                                <p class="text-gray-400 text-sm">Odds</p>
+                                <p class="text-lg font-bold text-yellow-400" id="free-odds-display">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 text-sm">AI Tipp</p>
+                                <p class="text-lg font-bold text-cyan-400" id="free-tip-display">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700"></div>
+                <!-- EGYÉB TIPPEK -->
+                 <div id="user-cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    <!-- A dinamikusan generált kártyák helye -->
+                </div>
+            </div>
+        </div>
 
-    </main>
+        <!-- ADMIN NÉZET (alapból rejtett) -->
+        <div id="admin-view" class="hidden">
+             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl font-bold text-orange-400">Admin Felület</h1>
+                    <button id="admin-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
+                </div>
+                <p id="admin-message" class="text-center text-green-400 h-4"></p>
+                <!-- INGYENES TIPP BEÁLLÍTÁSA -->
+                <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <h2 class="text-xl font-semibold text-green-400">Ingyenes szelvény beállítása</h2>
+                    <form id="free-tip-form" class="space-y-3">
+                        <input type="text" id="free-home-input" placeholder="Hazai csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                        <input type="text" id="free-away-input" placeholder="Vendég csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                        <input type="text" id="free-odds-input" placeholder="Odds (pl. 1.85)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                        <input type="text" id="free-tip-input" placeholder="AI Tipp (pl. Hazai győzelem)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                        <button type="submit" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-md">Ingyenes tipp mentése</button>
+                    </form>
+                </div>
+                <!-- ÚJ KÁRTYA LÉTREHOZÁSA -->
+                <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <h2 class="text-xl font-semibold text-cyan-400">Új tipp kártya létrehozása</h2>
+                    <form id="new-card-form" class="space-y-3">
+                        <input type="text" id="card-home-input" placeholder="Hazai csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
+                        <input type="text" id="card-away-input" placeholder="Vendég csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
+                        <input type="text" id="card-odds-input" placeholder="Odds" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
+                        <input type="text" id="card-tip-input" placeholder="AI Tipp" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
+                        <button type="submit" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 rounded-md">Kártya hozzáadása</button>
+                    </form>
+                </div>
+                <!-- LÉTREHOZOTT KÁRTYÁK -->
+                <div id="cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    <!-- A dinamikusan generált kártyák helye -->
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
+    <script>
+        // === VÁLTOZÓK ÉS DOM ELEMEK ===
+        const ADMIN_EMAIL = "kriszaibot.tutti@gmail.com";
 
-    // --- 1. SIMULATED API & BACKEND LOGIC ---
+        // Nézetek
+        const loginView = document.getElementById('login-view');
+        const codeView = document.getElementById('code-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const adminView = document.getElementById('admin-view');
 
-    const teamPool = [
-        "Manchester Utd", "Liverpool", "Arsenal", "Chelsea", "Tottenham", "Manchester City",
-        "Real Madrid", "Barcelona", "Atletico Madrid", "Sevilla", "Valencia", "Villarreal",
-        "Bayern München", "Borussia Dortmund", "RB Leipzig", "Bayer Leverkusen", "Eintracht Frankfurt",
-        "Juventus", "Inter Milan", "AC Milan", "AS Roma", "Napoli", "Lazio",
-        "PSG", "Olympique Marseille", "AS Monaco", "Olympique Lyon"
-    ];
+        // Login nézet elemei
+        const emailInput = document.getElementById('email-input');
+        const requestCodeBtn = document.getElementById('request-code-btn');
+        const loginMessage = document.getElementById('login-message');
 
-    /**
-     * Generates a single random football match with realistic odds.
-     * @param {string} dateString - The date for the match.
-     * @returns {object} A match object.
-     */
-    const generateRandomMatch = (dateString) => {
-        const shuffledTeams = [...teamPool].sort(() => 0.5 - Math.random());
-        const home = shuffledTeams[0];
-        const away = shuffledTeams[1];
-        
-        const isBigFavorite = Math.random() > 0.6;
-        let homeOdd, drawOdd, awayOdd;
+        // Kód nézet elemei
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const testCodeDisplay = document.getElementById('test-code-display');
+        const codeInput = document.getElementById('code-input');
+        const verifyCodeBtn = document.getElementById('verify-code-btn');
+        const codeMessage = document.getElementById('code-message');
+        const backToLoginBtn = document.getElementById('back-to-login-btn');
+        
+        // Felhasználói dashboard elemek
+        const userLogoutBtn = document.getElementById('user-logout-btn');
+        const freeHomeDisplay = document.getElementById('free-home-display');
+        const freeAwayDisplay = document.getElementById('free-away-display');
+        const freeOddsDisplay = document.getElementById('free-odds-display');
+        const freeTipDisplay = document.getElementById('free-tip-display');
+        const userCardsContainer = document.getElementById('user-cards-container');
 
-        if (isBigFavorite) {
-            homeOdd = 1.15 + Math.random() * 0.4; // 1.15 - 1.55
-            drawOdd = 4.5 + Math.random() * 4;   // 4.5 - 8.5
-            awayOdd = 6.0 + Math.random() * 10;  // 6.0 - 16.0
-        } else {
-            homeOdd = 1.60 + Math.random() * 1.2; // 1.60 - 2.80
-            drawOdd = 3.20 + Math.random() * 1.0; // 3.20 - 4.20
-            awayOdd = 2.50 + Math.random() * 2.0; // 2.50 - 4.50
-        }
-        
-        return {
-            home,
-            away,
-            date: dateString,
-            odds: {
-                "1": parseFloat(homeOdd.toFixed(2)),
-                "X": parseFloat(drawOdd.toFixed(2)),
-                "2": parseFloat(awayOdd.toFixed(2))
-            }
-        };
-    };
-    
-    /**
-     * Simulates fetching today's matches from a sports data API.
-     * @param {string} dateString - The date for which to fetch matches.
-     * @returns {Promise<Array>} A promise that resolves with an array of match objects.
-     */
-    const fetchTodaysMatchesFromAPI = (dateString) => {
-        console.log("Szimuláció: Mai meccsek lekérése az API-tól...");
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const matches = [];
-                for (let i = 0; i < 20; i++) { // Generate 20 random matches for the day
-                    matches.push(generateRandomMatch(dateString));
-                }
-                console.log(`Szimuláció: ${matches.length} meccs sikeresen 'letöltve'.`);
-                resolve(matches);
-            }, 1000); // Simulate network delay
-        });
-    };
+        // Admin nézet elemek
+        const adminLogoutBtn = document.getElementById('admin-logout-btn');
+        const adminMessage = document.getElementById('admin-message');
+        const freeTipForm = document.getElementById('free-tip-form');
+        const newCardForm = document.getElementById('new-card-form');
+        const cardsContainer = document.getElementById('cards-container');
 
-    /**
-     * Simulates an AI model analyzing a single match.
-     * @param {object} match - The match object with odds.
-     * @returns {object} The analyzed match with AI probability and EV.
-     */
-    const runAIAnalysis = (match) => {
-        const { odds } = match;
-        const implied1 = 1 / odds["1"];
-        const impliedX = 1 / odds["X"];
-        const implied2 = 1 / odds["2"];
-        const overround = implied1 + impliedX + implied2;
+        // Adattárolás (Mivel ez egy statikus app, az adatokat a memóriában tároljuk. Vercelre való feltöltés után ezek az adatok nem maradnak meg az oldal frissítésekor. Lásd a javaslatot az oldal alján a Firebase-re!)
+        let generatedCode = '';
+        // Alapértelmezett kezdő tippek
+        let freeTipData = { 
+            home: "Fradi", 
+            away: "Újpest", 
+            odds: "1.50", 
+            tip: "Hazai győzelem" 
+        };
+        let tipCardsData = [
+            { home: "Real Madrid", away: "Barcelona", odds: "2.10", tip: "Mindkét csapat gólt szerez" },
+            { home: "Bayern München", away: "Dortmund", odds: "1.75", tip: "Több mint 2.5 gól" }
+        ];
 
-        // Simulate AI's "edge" - a small random deviation from the bookmaker's probability
-        const aiProb1 = (implied1 / overround) * (1 + (Math.random() - 0.4) * 0.25);
-        const aiProbX = (impliedX / overround) * (1 + (Math.random() - 0.4) * 0.25);
-        const aiProb2 = (implied2 / overround) * (1 + (Math.random() - 0.4) * 0.25);
+        // === FUNKCIÓK ===
 
-        // Normalize AI probabilities to sum to 1
-        const aiTotalProb = aiProb1 + aiProbX + aiProb2;
-        const finalAIProb1 = aiProb1 / aiTotalProb;
-        const finalAIProbX = aiProbX / aiTotalProb;
-        const finalAIProb2 = aiProb2 / aiTotalProb;
+        function showView(viewToShow) {
+            // Elrejti az összes nézetet, majd mutatja a kért nézetet
+            [loginView, codeView, dashboardView, adminView].forEach(view => view.classList.add('hidden'));
+            viewToShow.classList.remove('hidden');
+        }
 
-        // Find the most likely outcome and its EV
-        let mostLikelyTip = "1";
-        let highestProb = finalAIProb1;
-        if (finalAIProbX > highestProb) { highestProb = finalAIProbX; mostLikelyTip = "X"; }
-        if (finalAIProb2 > highestProb) { highestProb = finalAIProb2; mostLikelyTip = "2"; }
+        function showMessage(element, text, isError = false) {
+            element.textContent = text;
+            element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-green-400'}`;
+            // Mivel az admin üzenet zöld, a login/code hibaüzenet marad piros.
+            if (element.id === 'admin-message') {
+                element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-green-400'}`;
+            } else {
+                element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-yellow-300'}`;
+            }
+            setTimeout(() => { element.textContent = ''; }, 3000);
+        }
 
-        const ev = (highestProb * odds[mostLikelyTip]) - 1;
+        function updateFreeTipDisplay() {
+            freeHomeDisplay.textContent = freeTipData.home;
+            freeAwayDisplay.textContent = freeTipData.away;
+            freeOddsDisplay.textContent = freeTipData.odds;
+            freeTipDisplay.textContent = freeTipData.tip;
 
-        return { ...match, tip: mostLikelyTip, ai_prob: highestProb, ev: ev };
-    };
+            // Admin form beviteli mezők frissítése az aktuális adatokkal
+            document.getElementById('free-home-input').value = freeTipData.home;
+            document.getElementById('free-away-input').value = freeTipData.away;
+            document.getElementById('free-odds-input').value = freeTipData.odds;
+            document.getElementById('free-tip-input').value = freeTipData.tip;
+        }
 
-    const getReason = (match) => {
-        if (match.ai_prob > 0.8) return "Kiemelkedő forma és hazai pálya előny.";
-        if (match.ev > 0.4) return "Erős piaci alulértékelés (magas EV).";
-        if (match.ai_prob > 0.65) return "Stabil forma és xG mutatók alapján.";
-        return "Kedvező oddsok a becsült valószínűséghez képest.";
-    };
-    
-    /**
-     * Main function to orchestrate fetching, analyzing, and categorizing tips.
-     * @returns {Promise<object>} A promise that resolves with the categorized tips.
-     */
-    const generateAndCategorizeTips = async () => {
-        const today = "2025-10-04";
-        const todaysMatches = await fetchTodaysMatchesFromAPI(today);
-        const analyzedMatches = todaysMatches.map(runAIAnalysis);
+        function renderAdminCards() {
+            cardsContainer.innerHTML = tipCardsData.length === 0 ? '<p class="text-center text-gray-500">Még nincs létrehozott kártya.</p>' : '';
+            tipCardsData.forEach((card, index) => {
+                cardsContainer.innerHTML += `
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-start">
+                        <div>
+                            <p class="text-lg font-bold">${card.home} vs ${card.away}</p>
+                            <p class="text-sm text-cyan-400">AI Tipp: ${card.tip}</p>
+                        </div>
+                        <div class="text-right">
+                           <p class="text-yellow-400 font-bold text-lg">${card.odds}</p>
+                           <button onclick="deleteCard(${index})" class="text-xs text-red-500 hover:text-red-400 mt-2">Törlés</button>
+                        </div>
+                    </div>`;
+            });
+        }
+        
+        function renderUserCards() {
+            userCardsContainer.innerHTML = tipCardsData.length === 0 ? '<p class="text-center text-gray-500">Nincsenek további tippek.</p>' : '';
+            tipCardsData.forEach(card => {
+                userCardsContainer.innerHTML += `
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
+                        <div>
+                            <p class="font-bold">${card.home} vs ${card.away}</p>
+                            <p class="text-sm text-cyan-400">${card.tip}</p>
+                        </div>
+                        <p class="text-yellow-400 font-bold text-lg">${card.odds}</p>
+                    </div>`;
+            });
+        }
 
-        const tips = {
-            fix: [],
-            kozepes: [],
-            "nagy-tetes": [],
-        };
-        
-        // Sort by a combined score of probability and value to find the best candidates
-        analyzedMatches.sort((a, b) => (b.ai_prob + b.ev) - (a.ai_prob + a.ev));
+        window.deleteCard = function(index) {
+            tipCardsData.splice(index, 1);
+            renderAdminCards();
+        }
 
-        analyzedMatches.forEach(match => {
-            const tipKey = match.tip;
-            if (tips.fix.length < 3 && match.ai_prob > 0.80 && match.ev >= 0.05) {
-                tips.fix.push({ ...match, selectedTip: tipKey, reason: getReason(match) });
-            } else if (tips.kozepes.length < 3 && match.ai_prob >= 0.65 && match.ai_prob <= 0.80 && match.ev >= 0.10) {
-                tips.kozepes.push({ ...match, selectedTip: tipKey, reason: getReason(match) });
-            } else if (tips["nagy-tetes"].length < 3 && match.ai_prob >= 0.55 && match.ai_prob < 0.65 && match.ev >= 0.25) {
-                tips["nagy-tetes"].push({ ...match, selectedTip: tipKey, reason: getReason(match) });
-            }
-        });
+        function logout() {
+            emailInput.value = '';
+            codeInput.value = '';
+            generatedCode = ''; // Töröljük a kódot is
+            showView(loginView);
+        }
 
-        return tips;
-    };
+        // === ESEMÉNYKEZELŐK ===
 
-    // --- 2. UI RENDERING ---
+        requestCodeBtn.addEventListener('click', () => {
+            const email = emailInput.value.trim().toLowerCase();
+            loginMessage.textContent = '';
+            codeMessage.textContent = '';
 
-    const createTipCardHTML = (match) => {
-        return `
-            <div class="card rounded-lg p-4 space-y-3">
-                <div class="flex justify-between items-center">
-                    <p class="font-bold text-white">${match.home} - ${match.away}</p>
-                    <p class="text-sm font-semibold bg-gray-700 px-2 py-1 rounded">${(match.odds[match.selectedTip]).toFixed(2)}</p>
-                </div>
-                <div>
-                    <p class="font-bold text-lg text-sky-400">${match.selectedTip === "1" ? "Hazai győzelem" : (match.selectedTip === "X" ? "Döntetlen" : "Vendég győzelem")}</p>
-                    <p class="text-sm text-slate-400">AI Valószínűség: <span class="font-semibold">${(match.ai_prob * 100).toFixed(0)}%</span></p>
-                </div>
-                <div class="text-xs text-gray-400 border-t border-gray-700 pt-2">
-                    <p><span class="font-semibold text-gray-300">Elemzés:</span> ${match.reason}</p>
-                </div>
-            </div>
-        `;
-    };
+            if (!email || !email.includes('@')) {
+                showMessage(loginMessage, 'Kérlek, adj meg egy érvényes email címet!', true);
+                return;
+            }
 
-    const renderTips = (tips) => {
-        const container = document.getElementById('tips-container');
+            // Admin belépés
+            if (email === ADMIN_EMAIL) {
+                showView(adminView);
+                updateFreeTipDisplay(); // Frissíti a beviteli mezőket is
+                renderAdminCards();
+            } else {
+                // Felhasználói belépés (kódgenerálás)
+                generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                userEmailDisplay.textContent = email;
+                testCodeDisplay.innerHTML = `Teszteléshez használd a kódot: <span class="font-mono font-extrabold text-xl text-yellow-300">${generatedCode}</span>`;
+                codeInput.value = ''; // Kód mező ürítése
+                showView(codeView);
+            }
+        });
 
-        if (tips.fix.length === 0 && tips.kozepes.length === 0 && tips['nagy-tetes'].length === 0) {
-            container.innerHTML = `<div class="card text-center p-8 rounded-lg">
-                <h2 class="text-xl font-semibold text-slate-300">A mai napra nincsenek elérhető AI tippek.</h2>
-                <p class="text-slate-400 mt-2">Az AI nem talált elegendő értéket a mai piaci kínálatban.</p>
-            </div>`;
-            return;
-        }
+        verifyCodeBtn.addEventListener('click', () => {
+            codeMessage.textContent = '';
+            if (codeInput.value.toUpperCase() === generatedCode) {
+                showView(dashboardView);
+                updateFreeTipDisplay();
+                renderUserCards();
+            } else {
+                showMessage(codeMessage, 'Hibás kód!', true);
+            }
+        });
+        
+        backToLoginBtn.addEventListener('click', () => showView(loginView));
+        
+        userLogoutBtn.addEventListener('click', logout);
+        adminLogoutBtn.addEventListener('click', logout);
 
-        container.innerHTML = `
-            <section id="fix-tips" class="category-fix">
-                <h2 class="text-2xl font-bold mb-4 text-green-400 card-header">Fix Tippek</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${tips.fix.map(createTipCardHTML).join('')}
-                </div>
-            </section>
-            <section id="kozepes-tips" class="category-kozepes">
-                <h2 class="text-2xl font-bold mb-4 text-yellow-400 card-header">Közepes Tétes Tippek</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${tips.kozepes.map(createTipCardHTML).join('')}
-                </div>
-            </section>
-            <section id="nagy-tetes-tips" class="category-nagy-tetes">
-                <h2 class="text-2xl font-bold mb-4 text-red-400 card-header">Nagy Tétes Tippek</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    ${tips['nagy-tetes'].map(createTipCardHTML).join('')}
-                </div>
-            </section>
-        `;
-    };
-    
-    // --- 3. EVENT LISTENERS ---
+        freeTipForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            freeTipData.home = document.getElementById('free-home-input').value.trim();
+            freeTipData.away = document.getElementById('free-away-input').value.trim();
+            freeTipData.odds = document.getElementById('free-odds-input').value.trim();
+            freeTipData.tip = document.getElementById('free-tip-input').value.trim();
+            updateFreeTipDisplay(); // Frissíti a felhasználói nézetet és a beviteli mezőket
+            showMessage(adminMessage, 'Ingyenes tipp sikeresen mentve!');
+        });
 
-    document.getElementById('generate-tips-btn').addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<div class="loader mx-auto"></div>';
-        btn.disabled = true;
-        
-        const today = new Date('2025-10-04');
-        const formattedDate = today.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
-        document.getElementById('tips-date-header').textContent = `Tippek a mai napra: ${formattedDate}`;
+        newCardForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const home = document.getElementById('card-home-input').value.trim();
+            const away = document.getElementById('card-away-input').value.trim();
+            const odds = document.getElementById('card-odds-input').value.trim();
+            const tip = document.getElementById('card-tip-input').value.trim();
+            
+            if (home && away && odds && tip) {
+                tipCardsData.push({ home, away, odds, tip });
+                renderAdminCards();
+                showMessage(adminMessage, 'Új kártya sikeresen hozzáadva!');
+                newCardForm.reset();
+            } else {
+                showMessage(adminMessage, 'Minden mező kitöltése kötelező!', true);
+            }
+        });
+        
+        // === INICIALIZÁLÁS ===
+        updateFreeTipDisplay();
+        showView(loginView); // Kezdés a bejelentkezési nézettel
 
-        try {
-            const tips = await generateAndCategorizeTips();
-            renderTips(tips);
-        } catch (error) {
-            console.error("Hiba a tippek generálása közben:", error);
-            document.getElementById('tips-container').innerHTML = `<div class="card text-center p-8 rounded-lg"><h2 class="text-xl font-semibold text-red-400">Hiba történt.</h2><p class="text-slate-400 mt-2">Nem sikerült lekérni a mai tippeket. Kérlek, próbáld újra később.</p></div>`;
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-    });
-
-});
-</script>
-
+    </script>
 </body>
 </html>
-

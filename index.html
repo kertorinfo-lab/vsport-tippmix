@@ -148,7 +148,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
-            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+            updateProfile // Hozzáadva a felhasználónév mentéséhez
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs, deleteDoc, orderBy 
@@ -262,6 +263,7 @@
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
+                        // A megjelenített név frissítése, a displayName előnyben részesítésével
                         userNameDisplay.textContent = user.displayName || user.email || 'Vendég';
                     } else {
                         userId = null;
@@ -298,11 +300,16 @@
             });
 
             // 2. Tipp kártyák figyelése
-            // Rendezés időbélyeg alapján, ha van; ha nincs, csak a gyűjteményt figyeljük
-            const q = query(collection(db, CARD_TIPS_COLLECTION_PATH, 'card_tips'));
+            // A CARD_TIPS_COLLECTION_PATH (5 szegmens) a gyűjtemény útvonala.
+            const q = query(collection(db, CARD_TIPS_COLLECTION_PATH));
 
             onSnapshot(q, (snapshot) => {
+                // Lekérdezés után manuálisan rendezzük időbélyeg szerint, ha szükséges
                 const tips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // A Firestore lekérdezésben nem használunk orderBy-t indexelési hiba miatt,
+                // ezért itt rendezünk (ha van timestamp)
+                tips.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); 
+                
                 renderUserCards(tips);
                 renderAdminCards(tips);
             });
@@ -341,7 +348,7 @@
         window.deleteTipCard = async function(docId) {
             if (!db) return;
             try {
-                await deleteDoc(doc(db, CARD_TIPS_COLLECTION_PATH, 'card_tips', docId));
+                await deleteDoc(doc(db, CARD_TIPS_COLLECTION_PATH, docId));
                 showMessage(adminMessage, 'Kártya sikeresen törölve!');
             } catch (e) {
                 showMessage(adminMessage, 'Hiba a törlés során: ' + e.message, true);
@@ -398,14 +405,23 @@
             setButtonLoading(registerBtn, registerBtnText, registerSpinner, true);
 
             try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                // Itt lehetne beállítani a felhasználó nevét, de az alap bejelentkezés már megvan
+                // Felhasználó létrehozása
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                
+                // Felhasználónév beállítása
+                await updateProfile(userCredential.user, { displayName: name });
+                
                 showMessage(registerMessage, 'Sikeres regisztráció! Lépj be a Fiókoddal.', false);
                 showView(loginView);
             } catch (error) {
+                console.error("Registration Error:", error);
                 let msg = 'Regisztrációs hiba. Próbáld újra.';
                 if (error.code === 'auth/email-already-in-use') {
                     msg = 'Ez az e-mail cím már használatban van.';
+                } else if (error.code === 'auth/weak-password') {
+                    msg = 'A jelszónak legalább 6 karakter hosszúnak kell lennie.';
+                } else if (error.code === 'auth/invalid-email') {
+                    msg = 'Érvénytelen e-mail cím formátum.';
                 }
                 showMessage(registerMessage, msg, true);
             } finally {
@@ -457,7 +473,7 @@
             }
 
             try {
-                await setDoc(doc(collection(db, CARD_TIPS_COLLECTION_PATH, 'card_tips')), {
+                await setDoc(doc(collection(db, CARD_TIPS_COLLECTION_PATH)), {
                     text: tipText, 
                     imageUrl: imageUrl,
                     timestamp: Date.now()

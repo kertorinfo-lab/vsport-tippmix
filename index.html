@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Biztonsági Tippek</title>
-    <!-- Tailwind CSS betöltése a gyors és modern stílusért -->
+    <title>Biztonságos Tippek</title>
+    <!-- Tailwind CSS és Inter betűtípus -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Egyedi betűtípus és finom átmenetek a jobb felhasználói élményért */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
         .card {
-            /* Átlátszó háttér a sötét témához */
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -27,110 +23,120 @@
         .btn:active {
             transform: translateY(0);
         }
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #38bdf8; /* Cyan-400 */
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-md mx-auto">
+        <p id="app-status" class="text-center text-sm text-yellow-500 mb-4 h-5"></p>
 
-        <!-- EMAIL MEGADÁSA NÉZET -->
+        <!-- BEJELENTKEZÉS NÉZET -->
         <div id="login-view">
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
-                <h1 class="text-3xl font-bold text-center text-cyan-400">AI Biztonsági Tippek</h1>
-                <p class="text-center text-gray-400">Add meg az email címed a belépéshez.</p>
+                <h1 class="text-3xl font-bold text-center text-cyan-400">Biztonságos Tippek</h1>
+                <p class="text-center text-gray-400">Jelentkezz be az e-mail címeddel.</p>
                 <div>
-                    <label for="email-input" class="block text-sm font-medium text-gray-300 mb-2">Email cím</label>
-                    <input type="email" id="email-input" placeholder="neved@example.com" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <label for="login-email-input" class="block text-sm font-medium text-gray-300 mb-2">E-mail</label>
+                    <input type="email" id="login-email-input" placeholder="neved@example.com / felhasznalo (Admin)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
                 </div>
-                <button id="request-code-btn" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow-lg">
-                    Tovább
+                <div>
+                    <label for="login-password-input" class="block text-sm font-medium text-gray-300 mb-2">Jelszó</label>
+                    <input type="password" id="login-password-input" placeholder="Jelszó" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                </div>
+                <button id="login-btn" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
+                    <span id="login-btn-text">Belépés</span>
+                    <div id="login-spinner" class="loading-spinner hidden ml-3"></div>
                 </button>
                 <p id="login-message" class="text-center text-red-400 text-sm h-4"></p>
+                <button id="to-register-btn" class="text-center w-full text-sm text-gray-400 hover:text-white">Nincs még fiókom? **Ingyenes csatlakozás!**</button>
             </div>
         </div>
         
-        <!-- KÓD MEGADÁSA NÉZET (rejtett) -->
-        <div id="code-view" class="hidden">
+        <!-- REGISZTRÁCIÓS NÉZET (rejtett) -->
+        <div id="register-view" class="hidden">
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
-                 <h1 class="text-3xl font-bold text-center text-cyan-400">Kód megerősítése</h1>
-                 <p class="text-center text-gray-400">Elküldtünk egy kódot a(z) <span id="user-email-display" class="font-bold text-white"></span> címre.</p>
-                 <p id="test-code-display" class="text-center bg-gray-800 p-2 rounded-md text-yellow-300"></p>
-                 <div>
-                    <label for="code-input" class="block text-sm font-medium text-gray-300 mb-2">Megerősítő kód</label>
-                    <input type="text" id="code-input" placeholder="******" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white text-center tracking-[0.5em] focus:ring-2 focus:ring-cyan-500 focus:outline-none">
-                 </div>
-                 <button id="verify-code-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg">
-                    Belépés
+                <h1 class="text-3xl font-bold text-center text-green-400">Ingyenes Csatlakozás</h1>
+                <p class="text-center text-gray-400">Készítsd el a fiókodat.</p>
+                <input type="text" id="reg-name-input" placeholder="Név" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
+                <input type="email" id="reg-email-input" placeholder="E-mail cím" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
+                <input type="password" id="reg-password-input" placeholder="Jelszó (min. 6 karakter)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
+                <button id="register-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
+                    <span id="register-btn-text">Regisztráció</span>
+                    <div id="register-spinner" class="loading-spinner hidden ml-3"></div>
                 </button>
-                 <p id="code-message" class="text-center text-red-400 text-sm h-4"></p>
-                 <button id="back-to-login-btn" class="text-center w-full text-sm text-gray-400 hover:text-white">Vissza</button>
+                <p id="register-message" class="text-center text-red-400 text-sm h-4"></p>
+                <button id="back-to-login-btn-reg" class="text-center w-full text-sm text-gray-400 hover:text-white">Vissza a bejelentkezéshez</button>
             </div>
         </div>
+
 
         <!-- FELHASZNÁLÓI VEZÉRLŐPULT (rejtett) -->
         <div id="dashboard-view" class="hidden">
              <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
-                <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-cyan-400">Tippek</h1>
+                <div class="flex justify-between items-center mb-4">
+                    <h1 class="text-2xl font-bold text-cyan-400">Biztonságos Tippek</h1>
                     <button id="user-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
                 </div>
-                <!-- INGYENES TIPP SZEKCIÓ -->
+                <p class="text-gray-400 text-sm">Üdvözöljük, <span id="user-name-display" class="font-bold text-white">Vendég</span>!</p>
+
+                <!-- FŐ TIPP SZEKCIÓ (Kép és Szöveg) -->
                 <div id="free-tip-section" class="space-y-4">
-                    <h2 class="text-xl font-semibold text-center text-green-400">A nap ingyenes tippje</h2>
-                    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center">
-                        <p class="text-gray-400 text-sm mb-2">Mérkőzés</p>
-                        <p class="text-xl font-bold"><span id="free-home-display">Nincs</span> vs <span id="free-away-display">megadva</span></p>
-                        <div class="flex justify-around items-center mt-4">
-                            <div>
-                                <p class="text-gray-400 text-sm">Odds</p>
-                                <p class="text-lg font-bold text-yellow-400" id="free-odds-display">-</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-400 text-sm">AI Tipp</p>
-                                <p class="text-lg font-bold text-cyan-400" id="free-tip-display">-</p>
-                            </div>
-                        </div>
+                    <h2 class="text-xl font-semibold text-center text-green-400">A nap kiemelt tippje</h2>
+                    <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center space-y-4">
+                        <img id="free-tip-image" src="" alt="A kiemelt tipp illusztrációja" class="w-full h-auto max-h-48 object-cover rounded-lg border border-gray-700" onerror="this.style.display='none'">
+                        <p id="free-tip-text" class="text-white text-lg font-medium">Betöltés alatt...</p>
                     </div>
                 </div>
                 <div class="border-t border-gray-700"></div>
-                <!-- EGYÉB TIPPEK -->
-                 <div id="user-cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
-                    <!-- A dinamikusan generált kártyák helye -->
+                <!-- EGYÉB TIPP KÁRTYÁK -->
+                <h2 class="text-xl font-semibold text-center text-cyan-400">További elemzések</h2>
+                <div id="user-cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    <p class="text-center text-gray-500">Nincsenek további tippek.</p>
                 </div>
             </div>
         </div>
 
-        <!-- ADMIN NÉZET (alapból rejtett) -->
+        <!-- ADMIN NÉZET (rejtett) -->
         <div id="admin-view" class="hidden">
              <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-3xl font-bold text-orange-400">Admin Felület</h1>
+                    <h1 class="text-3xl font-bold text-orange-400">Admin Felület (Kép & Szöveg)</h1>
                     <button id="admin-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
                 </div>
                 <p id="admin-message" class="text-center text-green-400 h-4"></p>
-                <!-- INGYENES TIPP BEÁLLÍTÁSA -->
+                
+                <!-- KIEMELT TIPP BEÁLLÍTÁSA -->
                 <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                    <h2 class="text-xl font-semibold text-green-400">Ingyenes szelvény beállítása</h2>
+                    <h2 class="text-xl font-semibold text-green-400">Kiemelt tipp beállítása</h2>
                     <form id="free-tip-form" class="space-y-3">
-                        <input type="text" id="free-home-input" placeholder="Hazai csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
-                        <input type="text" id="free-away-input" placeholder="Vendég csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
-                        <input type="text" id="free-odds-input" placeholder="Odds (pl. 1.85)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
-                        <input type="text" id="free-tip-input" placeholder="AI Tipp (pl. Hazai győzelem)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
-                        <button type="submit" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-md">Ingyenes tipp mentése</button>
+                        <textarea id="free-tip-text-input" placeholder="A kiemelt tipp részletes szövege" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none h-24"></textarea>
+                        <input type="text" id="free-tip-image-input" placeholder="Kép URL (pl. https://...)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                        <button type="submit" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-md">Tipp mentése</button>
                     </form>
                 </div>
                 <!-- ÚJ KÁRTYA LÉTREHOZÁSA -->
                 <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                    <h2 class="text-xl font-semibold text-cyan-400">Új tipp kártya létrehozása</h2>
+                    <h2 class="text-xl font-semibold text-cyan-400">Új elemzés/tipp kártya létrehozása</h2>
                     <form id="new-card-form" class="space-y-3">
-                        <input type="text" id="card-home-input" placeholder="Hazai csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
-                        <input type="text" id="card-away-input" placeholder="Vendég csapat" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
-                        <input type="text" id="card-odds-input" placeholder="Odds" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
-                        <input type="text" id="card-tip-input" placeholder="AI Tipp" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
+                        <textarea id="card-text-input" placeholder="A tipp rövid szövege / összefoglaló" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none"></textarea>
+                        <input type="text" id="card-image-input" placeholder="Kép URL (opcionális, pl. https://...)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
                         <button type="submit" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 rounded-md">Kártya hozzáadása</button>
                     </form>
                 </div>
                 <!-- LÉTREHOZOTT KÁRTYÁK -->
+                <h2 class="text-xl font-semibold text-orange-400 mt-6">Aktuális Kártyák (törléshez)</h2>
                 <div id="cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
                     <!-- A dinamikusan generált kártyák helye -->
                 </div>
@@ -138,208 +144,333 @@
         </div>
     </div>
 
-    <script>
-        // === VÁLTOZÓK ÉS DOM ELEMEK ===
-        const ADMIN_EMAIL = "kriszaibot.tutti@gmail.com";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs, deleteDoc, orderBy 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+         
+        // === GLOBÁLIS VÁLTOZÓK ÉS FIREBASE INICIALIZÁLÁS ===
+        
+        // ADMIN BELÉPÉSI ADATOK (Titkos felülírás az Ön kérésére)
+        const ADMIN_EMAIL_OVERRIDE = "felhasznalo";
+        const ADMIN_PASSWORD_OVERRIDE = "biztonság jelszo tippek";
 
+        // CANVAS KÖRNYEZETI VÁLTOZÓK
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let db, auth, userId = null;
+        let isAuthReady = false;
+
+        // Firebsae konfiguráció betöltése
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // Firestore Collection Path-ok
+        const FREE_TIP_DOC_PATH = `artifacts/${appId}/public/data/secure-tips/free_tip`;
+        const CARD_TIPS_COLLECTION_PATH = `artifacts/${appId}/public/data/secure-tips`;
+
+        // === DOM ELEMEK ===
+        const appStatus = document.getElementById('app-status');
         // Nézetek
         const loginView = document.getElementById('login-view');
-        const codeView = document.getElementById('code-view');
+        const registerView = document.getElementById('register-view');
         const dashboardView = document.getElementById('dashboard-view');
         const adminView = document.getElementById('admin-view');
 
-        // Login nézet elemei
-        const emailInput = document.getElementById('email-input');
-        const requestCodeBtn = document.getElementById('request-code-btn');
+        // Login
+        const loginEmailInput = document.getElementById('login-email-input');
+        const loginPasswordInput = document.getElementById('login-password-input');
+        const loginBtn = document.getElementById('login-btn');
+        const loginBtnText = document.getElementById('login-btn-text');
+        const loginSpinner = document.getElementById('login-spinner');
         const loginMessage = document.getElementById('login-message');
+        const toRegisterBtn = document.getElementById('to-register-btn');
 
-        // Kód nézet elemei
-        const userEmailDisplay = document.getElementById('user-email-display');
-        const testCodeDisplay = document.getElementById('test-code-display');
-        const codeInput = document.getElementById('code-input');
-        const verifyCodeBtn = document.getElementById('verify-code-btn');
-        const codeMessage = document.getElementById('code-message');
-        const backToLoginBtn = document.getElementById('back-to-login-btn');
+        // Register
+        const regNameInput = document.getElementById('reg-name-input');
+        const regEmailInput = document.getElementById('reg-email-input');
+        const regPasswordInput = document.getElementById('reg-password-input');
+        const registerBtn = document.getElementById('register-btn');
+        const registerBtnText = document.getElementById('register-btn-text');
+        const registerSpinner = document.getElementById('register-spinner');
+        const registerMessage = document.getElementById('register-message');
+        const backToLoginBtnReg = document.getElementById('back-to-login-btn-reg');
         
-        // Felhasználói dashboard elemek
+        // Dashboard
+        const userNameDisplay = document.getElementById('user-name-display');
         const userLogoutBtn = document.getElementById('user-logout-btn');
-        const freeHomeDisplay = document.getElementById('free-home-display');
-        const freeAwayDisplay = document.getElementById('free-away-display');
-        const freeOddsDisplay = document.getElementById('free-odds-display');
-        const freeTipDisplay = document.getElementById('free-tip-display');
+        const freeTipImage = document.getElementById('free-tip-image');
+        const freeTipText = document.getElementById('free-tip-text');
         const userCardsContainer = document.getElementById('user-cards-container');
 
-        // Admin nézet elemek
+        // Admin
         const adminLogoutBtn = document.getElementById('admin-logout-btn');
         const adminMessage = document.getElementById('admin-message');
         const freeTipForm = document.getElementById('free-tip-form');
+        const freeTipTextInput = document.getElementById('free-tip-text-input');
+        const freeTipImageInput = document.getElementById('free-tip-image-input');
         const newCardForm = document.getElementById('new-card-form');
+        const cardTextInput = document.getElementById('card-text-input');
+        const cardImageInput = document.getElementById('card-image-input');
         const cardsContainer = document.getElementById('cards-container');
 
-        // Adattárolás (Mivel ez egy statikus app, az adatokat a memóriában tároljuk. Vercelre való feltöltés után ezek az adatok nem maradnak meg az oldal frissítésekor. Lásd a javaslatot az oldal alján a Firebase-re!)
-        let generatedCode = '';
-        // Alapértelmezett kezdő tippek
-        let freeTipData = { 
-            home: "Fradi", 
-            away: "Újpest", 
-            odds: "1.50", 
-            tip: "Hazai győzelem" 
-        };
-        let tipCardsData = [
-            { home: "Real Madrid", away: "Barcelona", odds: "2.10", tip: "Mindkét csapat gólt szerez" },
-            { home: "Bayern München", away: "Dortmund", odds: "1.75", tip: "Több mint 2.5 gól" }
-        ];
 
-        // === FUNKCIÓK ===
+        // === SEGÉDFÜGGVÉNYEK ===
 
         function showView(viewToShow) {
             // Elrejti az összes nézetet, majd mutatja a kért nézetet
-            [loginView, codeView, dashboardView, adminView].forEach(view => view.classList.add('hidden'));
+            [loginView, registerView, dashboardView, adminView].forEach(view => view.classList.add('hidden'));
             viewToShow.classList.remove('hidden');
         }
 
         function showMessage(element, text, isError = false) {
             element.textContent = text;
             element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-green-400'}`;
-            // Mivel az admin üzenet zöld, a login/code hibaüzenet marad piros.
-            if (element.id === 'admin-message') {
-                element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-green-400'}`;
-            } else {
-                element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-yellow-300'}`;
+            setTimeout(() => { element.textContent = ''; }, 4000);
+        }
+
+        function setButtonLoading(button, textElement, spinnerElement, isLoading) {
+            button.disabled = isLoading;
+            textElement.classList.toggle('hidden', isLoading);
+            spinnerElement.classList.toggle('hidden', !isLoading);
+        }
+
+        // === FIREBASE FÜGGVÉNYEK ===
+
+        async function initializeFirebase() {
+            if (!firebaseConfig) {
+                appStatus.textContent = "Hiba: A Firebase konfiguráció hiányzik.";
+                return;
             }
-            setTimeout(() => { element.textContent = ''; }, 3000);
+            
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Bejelentkezés a tokennel, ha van, különben anonim
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Auth állapot figyelése
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userNameDisplay.textContent = user.displayName || user.email || 'Vendég';
+                    } else {
+                        userId = null;
+                    }
+                    isAuthReady = true;
+                    startListeners(); // Adatbázis figyelés indítása
+                    if (!user || user.isAnonymous) {
+                        showView(loginView); // Alapértelmezett nézet
+                    }
+                });
+
+                appStatus.textContent = "Sikeres kapcsolat a szerverrel.";
+
+            } catch (error) {
+                console.error("Firebase hiba:", error);
+                appStatus.textContent = `Hiba a Firebase inicializálásakor: ${error.code || error.message}`;
+                showView(loginView);
+            }
+        }
+        
+        function startListeners() {
+            if (!db || !isAuthReady) return;
+
+            // 1. Kiemelt tipp figyelése (Free Tip)
+            onSnapshot(doc(db, FREE_TIP_DOC_PATH), (docSnap) => {
+                const data = docSnap.data() || { text: 'Nincs beállított kiemelt tipp.', imageUrl: '' };
+                freeTipText.textContent = data.text;
+                freeTipImage.src = data.imageUrl;
+                freeTipImage.style.display = data.imageUrl ? 'block' : 'none';
+
+                // Admin mezők frissítése
+                freeTipTextInput.value = data.text;
+                freeTipImageInput.value = data.imageUrl;
+            });
+
+            // 2. Tipp kártyák figyelése
+            // Rendezés időbélyeg alapján, ha van; ha nincs, csak a gyűjteményt figyeljük
+            const q = query(collection(db, CARD_TIPS_COLLECTION_PATH, 'card_tips'));
+
+            onSnapshot(q, (snapshot) => {
+                const tips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUserCards(tips);
+                renderAdminCards(tips);
+            });
         }
 
-        function updateFreeTipDisplay() {
-            freeHomeDisplay.textContent = freeTipData.home;
-            freeAwayDisplay.textContent = freeTipData.away;
-            freeOddsDisplay.textContent = freeTipData.odds;
-            freeTipDisplay.textContent = freeTipData.tip;
 
-            // Admin form beviteli mezők frissítése az aktuális adatokkal
-            document.getElementById('free-home-input').value = freeTipData.home;
-            document.getElementById('free-away-input').value = freeTipData.away;
-            document.getElementById('free-odds-input').value = freeTipData.odds;
-            document.getElementById('free-tip-input').value = freeTipData.tip;
-        }
+        // === ADMIN / UI RENDER FÜGGVÉNYEK ===
 
-        function renderAdminCards() {
-            cardsContainer.innerHTML = tipCardsData.length === 0 ? '<p class="text-center text-gray-500">Még nincs létrehozott kártya.</p>' : '';
-            tipCardsData.forEach((card, index) => {
+        function renderAdminCards(tips) {
+            cardsContainer.innerHTML = tips.length === 0 ? '<p class="text-center text-gray-500">Még nincs létrehozott kártya.</p>' : '';
+            tips.forEach(card => {
                 cardsContainer.innerHTML += `
                     <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-start">
-                        <div>
-                            <p class="text-lg font-bold">${card.home} vs ${card.away}</p>
-                            <p class="text-sm text-cyan-400">AI Tipp: ${card.tip}</p>
+                        <div class="flex-1 pr-4">
+                            <p class="text-sm text-gray-400 mb-2">${card.imageUrl ? 'Kép van csatolva' : 'Nincs kép'}</p>
+                            <p class="text-white text-md overflow-hidden max-h-16">${card.text.substring(0, 100)}...</p>
                         </div>
-                        <div class="text-right">
-                           <p class="text-yellow-400 font-bold text-lg">${card.odds}</p>
-                           <button onclick="deleteCard(${index})" class="text-xs text-red-500 hover:text-red-400 mt-2">Törlés</button>
-                        </div>
+                        <button onclick="deleteTipCard('${card.id}')" class="text-xs text-red-500 hover:text-red-400 mt-1 flex-shrink-0">Törlés</button>
                     </div>`;
             });
         }
         
-        function renderUserCards() {
-            userCardsContainer.innerHTML = tipCardsData.length === 0 ? '<p class="text-center text-gray-500">Nincsenek további tippek.</p>' : '';
-            tipCardsData.forEach(card => {
+        function renderUserCards(tips) {
+            userCardsContainer.innerHTML = tips.length === 0 ? '<p class="text-center text-gray-500">Nincsenek további elemzések.</p>' : '';
+            tips.forEach(card => {
                 userCardsContainer.innerHTML += `
-                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
-                        <div>
-                            <p class="font-bold">${card.home} vs ${card.away}</p>
-                            <p class="text-sm text-cyan-400">${card.tip}</p>
+                    <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
+                        ${card.imageUrl ? `<img src="${card.imageUrl}" alt="Illusztráció" class="w-16 h-16 object-cover rounded-md flex-shrink-0" onerror="this.src='https://placehold.co/64x64/2d3748/a0aec0?text=K%C3%A9p'">` : ''}
+                        <div class="flex-1 text-center md:text-left">
+                            <p class="text-sm text-white">${card.text}</p>
                         </div>
-                        <p class="text-yellow-400 font-bold text-lg">${card.odds}</p>
                     </div>`;
             });
         }
 
-        window.deleteCard = function(index) {
-            tipCardsData.splice(index, 1);
-            renderAdminCards();
-        }
-
-        function logout() {
-            emailInput.value = '';
-            codeInput.value = '';
-            generatedCode = ''; // Töröljük a kódot is
-            showView(loginView);
+        window.deleteTipCard = async function(docId) {
+            if (!db) return;
+            try {
+                await deleteDoc(doc(db, CARD_TIPS_COLLECTION_PATH, 'card_tips', docId));
+                showMessage(adminMessage, 'Kártya sikeresen törölve!');
+            } catch (e) {
+                showMessage(adminMessage, 'Hiba a törlés során: ' + e.message, true);
+            }
         }
 
         // === ESEMÉNYKEZELŐK ===
 
-        requestCodeBtn.addEventListener('click', () => {
-            const email = emailInput.value.trim().toLowerCase();
+        // Nézetváltók
+        toRegisterBtn.addEventListener('click', () => showView(registerView));
+        backToLoginBtnReg.addEventListener('click', () => showView(loginView));
+        
+        // Bejelentkezés
+        loginBtn.addEventListener('click', async () => {
             loginMessage.textContent = '';
-            codeMessage.textContent = '';
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value;
 
-            if (!email || !email.includes('@')) {
-                showMessage(loginMessage, 'Kérlek, adj meg egy érvényes email címet!', true);
+            if (!email || !password) {
+                showMessage(loginMessage, 'Töltse ki mindkét mezőt.', true);
                 return;
             }
 
-            // Admin belépés
-            if (email === ADMIN_EMAIL) {
+            // ADMIN FELÜLÍRÁS (Titkos belépés)
+            if (email === ADMIN_EMAIL_OVERRIDE && password === ADMIN_PASSWORD_OVERRIDE) {
                 showView(adminView);
-                updateFreeTipDisplay(); // Frissíti a beviteli mezőket is
-                renderAdminCards();
-            } else {
-                // Felhasználói belépés (kódgenerálás)
-                generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-                userEmailDisplay.textContent = email;
-                testCodeDisplay.innerHTML = `Teszteléshez használd a kódot: <span class="font-mono font-extrabold text-xl text-yellow-300">${generatedCode}</span>`;
-                codeInput.value = ''; // Kód mező ürítése
-                showView(codeView);
+                return;
             }
-        });
 
-        verifyCodeBtn.addEventListener('click', () => {
-            codeMessage.textContent = '';
-            if (codeInput.value.toUpperCase() === generatedCode) {
-                showView(dashboardView);
-                updateFreeTipDisplay();
-                renderUserCards();
-            } else {
-                showMessage(codeMessage, 'Hibás kód!', true);
-            }
-        });
-        
-        backToLoginBtn.addEventListener('click', () => showView(loginView));
-        
-        userLogoutBtn.addEventListener('click', logout);
-        adminLogoutBtn.addEventListener('click', logout);
-
-        freeTipForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            freeTipData.home = document.getElementById('free-home-input').value.trim();
-            freeTipData.away = document.getElementById('free-away-input').value.trim();
-            freeTipData.odds = document.getElementById('free-odds-input').value.trim();
-            freeTipData.tip = document.getElementById('free-tip-input').value.trim();
-            updateFreeTipDisplay(); // Frissíti a felhasználói nézetet és a beviteli mezőket
-            showMessage(adminMessage, 'Ingyenes tipp sikeresen mentve!');
-        });
-
-        newCardForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const home = document.getElementById('card-home-input').value.trim();
-            const away = document.getElementById('card-away-input').value.trim();
-            const odds = document.getElementById('card-odds-input').value.trim();
-            const tip = document.getElementById('card-tip-input').value.trim();
+            setButtonLoading(loginBtn, loginBtnText, loginSpinner, true);
             
-            if (home && away && odds && tip) {
-                tipCardsData.push({ home, away, odds, tip });
-                renderAdminCards();
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showView(dashboardView);
+            } catch (error) {
+                showMessage(loginMessage, 'Bejelentkezési hiba: ' + (error.message.includes('auth/invalid-credential') ? 'Érvénytelen e-mail vagy jelszó.' : error.message), true);
+            } finally {
+                setButtonLoading(loginBtn, loginBtnText, loginSpinner, false);
+            }
+        });
+
+        // Regisztráció
+        registerBtn.addEventListener('click', async () => {
+            registerMessage.textContent = '';
+            const name = regNameInput.value.trim();
+            const email = regEmailInput.value.trim();
+            const password = regPasswordInput.value;
+
+            if (!name || !email || password.length < 6) {
+                showMessage(registerMessage, 'Kérlek, töltsd ki az összes mezőt (jelszó min. 6).', true);
+                return;
+            }
+
+            setButtonLoading(registerBtn, registerBtnText, registerSpinner, true);
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                // Itt lehetne beállítani a felhasználó nevét, de az alap bejelentkezés már megvan
+                showMessage(registerMessage, 'Sikeres regisztráció! Lépj be a Fiókoddal.', false);
+                showView(loginView);
+            } catch (error) {
+                let msg = 'Regisztrációs hiba. Próbáld újra.';
+                if (error.code === 'auth/email-already-in-use') {
+                    msg = 'Ez az e-mail cím már használatban van.';
+                }
+                showMessage(registerMessage, msg, true);
+            } finally {
+                setButtonLoading(registerBtn, registerBtnText, registerSpinner, false);
+            }
+        });
+
+        // Kijelentkezés
+        userLogoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            showView(loginView);
+        });
+        adminLogoutBtn.addEventListener('click', async () => {
+            // Az admin felülírás miatt egyszerűen csak a bejelentkezési oldalra visz
+            showView(loginView);
+        });
+
+        // Admin: Kiemelt tipp mentése
+        freeTipForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!db) return;
+
+            const tipText = freeTipTextInput.value.trim();
+            const imageUrl = freeTipImageInput.value.trim();
+
+            try {
+                await setDoc(doc(db, FREE_TIP_DOC_PATH), { 
+                    text: tipText || 'Nincs beállított kiemelt tipp.', 
+                    imageUrl: imageUrl,
+                    timestamp: Date.now()
+                });
+                showMessage(adminMessage, 'Kiemelt tipp sikeresen mentve!');
+            } catch (e) {
+                showMessage(adminMessage, 'Hiba a mentés során: ' + e.message, true);
+            }
+        });
+
+        // Admin: Új tipp kártya hozzáadása
+        newCardForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!db) return;
+
+            const tipText = cardTextInput.value.trim();
+            const imageUrl = cardImageInput.value.trim();
+            
+            if (!tipText) {
+                showMessage(adminMessage, 'A tipp szövege kötelező!', true);
+                return;
+            }
+
+            try {
+                await setDoc(doc(collection(db, CARD_TIPS_COLLECTION_PATH, 'card_tips')), {
+                    text: tipText, 
+                    imageUrl: imageUrl,
+                    timestamp: Date.now()
+                });
                 showMessage(adminMessage, 'Új kártya sikeresen hozzáadva!');
                 newCardForm.reset();
-            } else {
-                showMessage(adminMessage, 'Minden mező kitöltése kötelező!', true);
+            } catch (e) {
+                showMessage(adminMessage, 'Hiba a hozzáadás során: ' + e.message, true);
             }
         });
-        
-        // === INICIALIZÁLÁS ===
-        updateFreeTipDisplay();
-        showView(loginView); // Kezdés a bejelentkezési nézettel
 
+        // === INDÍTÁS ===
+        initializeFirebase();
     </script>
 </body>
 </html>

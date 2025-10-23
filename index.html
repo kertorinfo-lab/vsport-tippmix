@@ -190,7 +190,36 @@
         let isAuthReady = false;
 
         // Firebsae konfiguráció betöltése
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // === FIREBASE KONFIGURÁCIÓ ===
+        // A Vercel (vagy GitHub Pages) futtatáshoz másold ide
+        // a Firebase Konzolból kapott 'firebaseConfig' objektumot.
+        // FONTOS: Ez GitHub-on publikussá teszi a kulcsaidat!
+        // Csak demo/teszt célra használd.
+        
+        // IDE MÁSOLD A KONFIGOT (ha nem Canvas-ban futtatod):
+        const manualFirebaseConfig = {
+          apiKey: "AIzaSyAr-yMNGRkM9WOqnUa-Um3wwRFDRZICr1A",
+          authDomain: "biztonsagos-tippek-projekt.firebaseapp.com",
+          projectId: "biztonsagos-tippek-projekt",
+          storageBucket: "biztonsagos-tippek-projekt.firebasestorage.app",
+          messagingSenderId: "857092685171",
+          appId: "1:857092685171:web:4abc6d145558da2f569906"
+        }; 
+        // Például:
+        // const manualFirebaseConfig = {
+        //   apiKey: "AIza...",
+        //   authDomain: "projekt-neve.firebaseapp.com",
+        //   projectId: "projekt-neve",
+        //   storageBucket: "projekt-neve.appspot.com",
+        //   messagingSenderId: "123456789",
+        //   appId: "1:123456789:web:abcd..."
+        // };
+
+        // A kód ellenőrzi, hogy a Canvas-ból (__) kap-e adatot, 
+        // vagy a manuálisan beírtat (manualFirebaseConfig) kell-e használnia.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : manualFirebaseConfig;
         
         // Firestore Collection Path-ok
         const FREE_TIP_DOC_PATH = `artifacts/${appId}/public/data/secure-tips/free_tip`;
@@ -543,3 +572,4 @@
     </script>
 </body>
 </html>
+

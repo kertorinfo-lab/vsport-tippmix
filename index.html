@@ -450,7 +450,16 @@
                 // MÓDOSÍTVA: Irányítás a fizetési oldalra
                 showView(paymentView); 
             } catch (error) {
-                showMessage(loginMessage, 'Bejelentkezési hiba: ' + (error.message.includes('auth/invalid-credential') ? 'Érvénytelen e-mail vagy jelszó.' : error.message), true);
+                // MÓDOSÍTOTT HIBAKEZELÉS
+                let hibaUzenet = 'Bejelentkezési hiba: ';
+                if (error.code === 'auth/invalid-email') {
+                    hibaUzenet += 'Érvénytelen e-mail cím formátum.';
+                } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                    hibaUzenet += 'Érvénytelen e-mail vagy jelszó.';
+                } else {
+                    hibaUzenet += error.message; // Egyéb hibák kiírása
+                }
+                showMessage(loginMessage, hibaUzenet, true);
             } finally {
                 setButtonLoading(loginBtn, loginBtnText, loginSpinner, false);
             }

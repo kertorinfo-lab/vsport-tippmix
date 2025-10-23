@@ -494,9 +494,13 @@
             });
 
             // 3. ÚJ: Függőben lévő fizetések figyelése
-            const qPending = query(collection(db, PENDING_PAYMENTS_COLLECTION_PATH), where("status", "==", "pending"));
+            // JAVÍTVA: A where() indexelési hiba elkerülése végett eltávolítva.
+            // Az egész kollekciót lekérjük, és kliens oldalon szűrünk.
+            const qPending = query(collection(db, PENDING_PAYMENTS_COLLECTION_PATH));
             onSnapshot(qPending, (snapshot) => {
-                renderAdminPendingList(snapshot.docs);
+                // Kliens oldali szűrés 'pending' státuszra
+                const pendingDocs = snapshot.docs.filter(doc => doc.data().status === 'pending');
+                renderAdminPendingList(pendingDocs);
             });
         }
 
@@ -809,6 +813,7 @@
     </script>
 </body>
 </html>
+
 
 
 

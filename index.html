@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biztonságos Tippek</title>
+    <title>Ai biztonságos Tippjei</title>
     <!-- Tailwind CSS és Inter betűtípus -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* ÚJ: Sötétzöld "sport/tech" téma */
+            background-color: #0a1a1a;
+            background-image: radial-gradient(ellipse at center, #1a2e2a 0%, #0a1a1a 100%);
+        }
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            /* Enyhén zöldes "üveg" hatás */
+            background: rgba(16, 185, 129, 0.05); 
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.1);
         }
         .btn {
             transition: background-color 0.3s, transform 0.2s;
@@ -26,7 +32,7 @@
         .loading-spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top: 4px solid #38bdf8; /* Cyan-400 */
+            border-top: 4px solid #34d399; /* ÚJ: Zöld (emerald-400) */
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
@@ -37,7 +43,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+<body class="text-white min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-md mx-auto">
         <p id="app-status" class="text-center text-sm text-yellow-500 mb-4 h-5"></p>
@@ -45,17 +51,17 @@
         <!-- BEJELENTKEZÉS NÉZET -->
         <div id="login-view">
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
-                <h1 class="text-3xl font-bold text-center text-cyan-400">Biztonságos Tippek</h1>
+                <h1 class="text-3xl font-bold text-center text-green-400">Ai biztonságos Tippjei</h1>
                 <p class="text-center text-gray-400">Jelentkezz be az e-mail címeddel.</p>
                 <div>
                     <label for="login-email-input" class="block text-sm font-medium text-gray-300 mb-2">E-mail</label>
-                    <input type="email" id="login-email-input" placeholder="neved@example.com / felhasznalo (Admin)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <input type="email" id="login-email-input" placeholder="neved@example.com / felhasznalo (Admin)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
                 </div>
                 <div>
                     <label for="login-password-input" class="block text-sm font-medium text-gray-300 mb-2">Jelszó</label>
-                    <input type="password" id="login-password-input" placeholder="Jelszó" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                    <input type="password" id="login-password-input" placeholder="Jelszó" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
                 </div>
-                <button id="login-btn" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
+                <button id="login-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
                     <span id="login-btn-text">Belépés</span>
                     <div id="login-spinner" class="loading-spinner hidden ml-3"></div>
                 </button>
@@ -109,7 +115,7 @@
         <div id="dashboard-view" class="hidden">
              <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
                  <div class="flex justify-between items-center mb-4">
-                     <h1 class="text-2xl font-bold text-cyan-400">Biztonságos Tippek</h1>
+                     <h1 class="text-2xl font-bold text-green-400">Ai biztonságos Tippjei</h1>
                      <button id="user-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
                  </div>
                  <p class="text-gray-400 text-sm">Üdvözöljük, <span id="user-name-display" class="font-bold text-white">Vendég</span>!</p>
@@ -124,7 +130,7 @@
                  </div>
                  <div class="border-t border-gray-700"></div>
                  <!-- EGYÉB TIPP KÁRTYÁK -->
-                 <h2 class="text-xl font-semibold text-center text-cyan-400">További elemzések</h2>
+                 <h2 class="text-xl font-semibold text-center text-green-400">További elemzések</h2>
                  <div id="user-cards-container" class="space-y-4 max-h-60 overflow-y-auto pr-2">
                      <p class="text-center text-gray-500">Nincsenek további tippek.</p>
                  </div>
@@ -151,11 +157,11 @@
                  </div>
                  <!-- ÚJ KÁRTYA LÉTREHOZÁSA -->
                  <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
-                     <h2 class="text-xl font-semibold text-cyan-400">Új elemzés/tipp kártya létrehozása</h2>
+                     <h2 class="text-xl font-semibold text-green-400">Új elemzés/tipp kártya létrehozása</h2>
                      <form id="new-card-form" class="space-y-3">
-                         <textarea id="card-text-input" placeholder="A tipp rövid szövege / összefoglaló" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none"></textarea>
-                         <input type="text" id="card-image-input" placeholder="Kép URL (opcionális, pl. https://...)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-cyan-500 focus:outline-none">
-                         <button type="submit" class="w-full btn bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 rounded-md">Kártya hozzáadása</button>
+                         <textarea id="card-text-input" placeholder="A tipp rövid szövege / összefoglaló" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none"></textarea>
+                         <input type="text" id="card-image-input" placeholder="Kép URL (opcionális, pl. https://...)" class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 focus:ring-1 focus:ring-green-500 focus:outline-none">
+                         <button type="submit" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-md">Kártya hozzáadása</button>
                      </form>
                  </div>
                  <!-- LÉTREHOZOTT KÁRTYÁK -->

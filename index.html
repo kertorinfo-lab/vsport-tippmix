@@ -10,9 +10,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { 
             font-family: 'Inter', sans-serif; 
-            /* ÚJ: Sötétzöld "sport/tech" téma */
-            background-color: #0a1a1a;
-            background-image: radial-gradient(ellipse at center, #1a2e2a 0%, #0a1a1a 100%);
+            /* ÚJ: Világosabb sötétzöld téma */
+            background-color: #14532d; /* green-900 */
+            background-image: radial-gradient(ellipse at center, #166534 0%, #14532d 100%); /* green-800 -> green-900 */
         }
         .card {
             /* Enyhén zöldes "üveg" hatás */
@@ -75,7 +75,7 @@
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
                 <h1 class="text-3xl font-bold text-center text-green-400">Ingyenes Csatlakozás</h1>
                 <p class="text-center text-gray-400">Készítsd el a fiókodat.</p>
-                <input type="text" id="reg-name-input" placeholder="Név" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
+                <!-- NÉV MEZŐ ELTÁVOLÍTVA -->
                 <input type="email" id="reg-email-input" placeholder="E-mail cím" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
                 <input type="password" id="reg-password-input" placeholder="Jelszó (min. 6 karakter)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
                 <button id="register-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
@@ -87,11 +87,11 @@
             </div>
         </div>
 
-        <!-- FIZETÉSI NÉZET (rejtett) - ÚJ -->
+        <!-- FIZETÉSI NÉZET (rejtett) - MÓDOSÍTVA -->
         <div id="payment-view" class="hidden">
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
                 <h1 class="text-3xl font-bold text-center text-yellow-400">Csomag Aktiválása</h1>
-                <p class="text-center text-gray-400">Fizess elő a "Biztonsági Csomagra", hogy lásd a tippeket.</p>
+                <p class="text-center text-gray-400">Kérjük, utald el az összeget a hozzáféréshez.</p>
                 
                 <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 text-center space-y-4">
                     <h2 class="text-2xl font-semibold text-white">Biztonsági Csomag</h2>
@@ -99,10 +99,28 @@
                     <p class="text-gray-400">1 hónapos hozzáférés</p>
                 </div>
 
-                <p class="text-sm text-gray-500 text-center">A gombra kattintva szimuláljuk a sikeres fizetést (pl. Revolut). Valódi fizetés nem történik.</p>
+                <!-- ÚJ: REVOLUT UTALÁSI RÉSZLETEK -->
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-3">
+                    <h3 class="text-lg font-semibold text-white text-center">Banki átutalás (Revolut)</h3>
+                    <p class="text-sm text-gray-400 text-center">Kérjük, az utalás közleményébe (reference) **pontosan** add meg a lenti Felhasználói Azonosítódat!</p>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400">Kedvezményezett</label>
+                        <input type="text" readonly value="[Név / Vállalkozás Neve]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400">IBAN / Számlaszám</label>
+                        <input type="text" readonly value="[LTXX XXXX XXXX XXXX XXXX]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400">Közlemény / Reference (FONTOS)</label>
+                        <input type="text" readonly id="payment-user-id" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-yellow-400 font-mono cursor-text">
+                    </div>
+                </div>
+                <!-- VÉGE: REVOLUT UTALÁSI RÉSZLETEK -->
+
 
                 <button id="pay-btn" class="w-full btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
-                    <span id="pay-btn-text">Fizetés és Csomag Aktiválása</span>
+                    <span id="pay-btn-text">Elutaltam, Kérem a Hozzáférést</span>
                     <div id="pay-spinner" class="loading-spinner hidden ml-3"></div>
                 </button>
 
@@ -177,8 +195,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
-            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
-            updateProfile // Hozzáadva a felhasználónév mentéséhez
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
+            // updateProfile ELTÁVOLÍTVA
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs, deleteDoc, orderBy 
@@ -250,7 +268,7 @@
         const toRegisterBtn = document.getElementById('to-register-btn');
 
         // Register
-        const regNameInput = document.getElementById('reg-name-input');
+        // regNameInput ELTÁVOLÍTVA
         const regEmailInput = document.getElementById('reg-email-input');
         const regPasswordInput = document.getElementById('reg-password-input');
         const registerBtn = document.getElementById('register-btn');
@@ -259,11 +277,12 @@
         const registerMessage = document.getElementById('register-message');
         const backToLoginBtnReg = document.getElementById('back-to-login-btn-reg');
         
-        // Payment (ÚJ)
+        // Payment (MÓDOSÍTVA)
         const payBtn = document.getElementById('pay-btn');
         const payBtnText = document.getElementById('pay-btn-text');
         const paySpinner = document.getElementById('pay-spinner');
         const backToLoginBtnPay = document.getElementById('back-to-login-btn-pay');
+        const paymentUserId = document.getElementById('payment-user-id'); // ÚJ
 
         // Dashboard
         const userNameDisplay = document.getElementById('user-name-display');
@@ -328,8 +347,12 @@
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        // A megjelenített név frissítése, a displayName előnyben részesítésével
+                        // A megjelenített név frissítése, e-mailt használ, ha nincs név
                         userNameDisplay.textContent = user.displayName || user.email || 'Vendég';
+                        // ÚJ: Fizetési közlemény mező kitöltése
+                        if(paymentUserId) {
+                            paymentUserId.value = userId;
+                        }
                     } else {
                         userId = null;
                     }
@@ -471,15 +494,16 @@
             }
         });
 
-        // Regisztráció
+        // Regisztráció (MÓDOSÍTVA)
         registerBtn.addEventListener('click', async () => {
             registerMessage.textContent = '';
-            const name = regNameInput.value.trim();
+            // const name ELTÁVOLÍTVA
             const email = regEmailInput.value.trim();
             const password = regPasswordInput.value;
 
-            if (!name || !email || password.length < 6) {
-                showMessage(registerMessage, 'Kérlek, töltsd ki az összes mezőt (jelszó min. 6).', true);
+            // Validáció módosítva (név nélkül)
+            if (!email || password.length < 6) {
+                showMessage(registerMessage, 'Kérlek, töltsd ki az e-mail és jelszó mezőt (jelszó min. 6).', true);
                 return;
             }
 
@@ -489,8 +513,7 @@
                 // Felhasználó létrehozása
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 
-                // Felhasználónév beállítása
-                await updateProfile(userCredential.user, { displayName: name });
+                // updateProfile hívás ELTÁVOLÍTVA
                 
                 // MÓDOSÍTVA: A felhasználó a login oldalra kerül, hogy bejelentkezzen és lássa a fizetési oldalt
                 showMessage(loginMessage, 'Sikeres regisztráció! Lépj be a fiókoddal.', false);
@@ -511,12 +534,12 @@
             }
         });
 
-        // ÚJ: Fizetés szimulálása
+        // MÓDOSÍTVA: "Fizetés" gomb (most már csak továbbenged)
         payBtn.addEventListener('click', async () => {
             setButtonLoading(payBtn, payBtnText, paySpinner, true);
             
-            // Itt lenne a valódi fizetési logika (pl. Revolut API hívás)
-            // Mi most csak szimulálunk egy rövid várakozást
+            // Itt egy valós alkalmazásban várnánk a manuális megerősítésre,
+            // de ebben a demo-ban 1.5s után továbbengedjük, mintha fizetett volna.
             await new Promise(resolve => setTimeout(resolve, 1500)); 
             
             // Sikeres "fizetés" után irányítás a főoldalra

@@ -29,13 +29,19 @@
         .btn:active {
             transform: translateY(0);
         }
-        .loading-spinner {
+        .loading-spinner, .waiting-spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top: 4px solid #34d399; /* ÚJ: Zöld (emerald-400) */
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
+        }
+        /* Nagyobb spinner a várakozó oldalra */
+        .waiting-spinner {
+            width: 40px;
+            height: 40px;
+            border-top-color: #facc15; /* Sárga */
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -53,6 +59,8 @@
             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
                 <h1 class="text-3xl font-bold text-center text-green-400">Ai biztonságos Tippjei</h1>
                 <p class="text-center text-gray-400">Jelentkezz be az e-mail címeddel.</p>
+                <!-- ÚJ: Lejárati üzenet helye -->
+                <p id="expiry-message" class="text-center text-yellow-400 text-sm h-4"></p>
                 <div>
                     <label for="login-email-input" class="block text-sm font-medium text-gray-300 mb-2">E-mail</label>
                     <input type="email" id="login-email-input" placeholder="neved@example.com / felhasznalo (Admin)" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none">
@@ -99,32 +107,54 @@
                     <p class="text-gray-400">1 hónapos hozzáférés</p>
                 </div>
 
-                <!-- ÚJ: REVOLUT UTALÁSI RÉSZLETEK -->
+                <!-- MÓDOSÍTOTT REVOLUT RÉSZLETEK -->
                 <div class="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-3">
                     <h3 class="text-lg font-semibold text-white text-center">Banki átutalás (Revolut)</h3>
-                    <p class="text-sm text-gray-400 text-center">Kérjük, az utalás közleményébe (reference) **pontosan** add meg a lenti Felhasználói Azonosítódat!</p>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400">Kedvezményezett</label>
-                        <input type="text" readonly value="[Név / Vállalkozás Neve]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
-                    </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-400">IBAN / Számlaszám</label>
-                        <input type="text" readonly value="[LTXX XXXX XXXX XXXX XXXX]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
+                        <input type="text" readonly value="LT76 3250 0068 1054 4950" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white font-mono cursor-text">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-400">Közlemény / Reference (FONTOS)</label>
-                        <input type="text" readonly id="payment-user-id" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-yellow-400 font-mono cursor-text">
+                        <label class="block text-xs font-medium text-gray-400">E-mail (küldd el a bizonylatot és a regisztrált e-mail címed)</label>
+                        <input type="text" readonly value="[EMAIL_CIMED_IDE]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
+                    </div>
+                     <div>
+                        <label class="block text-xs font-medium text-gray-400">Számla Név</label>
+                        <input type="text" readonly value="[IDE ÍRD A SZÁMLA TULAJDONOS NEVÉT]" class="w-full bg-gray-700 border-gray-600 rounded mt-1 px-3 py-2 text-white cursor-text">
                     </div>
                 </div>
                 <!-- VÉGE: REVOLUT UTALÁSI RÉSZLETEK -->
 
 
                 <button id="pay-btn" class="w-full btn bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center">
-                    <span id="pay-btn-text">Elutaltam, Kérem a Hozzáférést</span>
+                    <span id="pay-btn-text">Kész vagyok</span>
                     <div id="pay-spinner" class="loading-spinner hidden ml-3"></div>
                 </button>
 
                 <button id="back-to-login-btn-pay" class="text-center w-full text-sm text-gray-400 hover:text-white">Kijelentkezés</button>
+            </div>
+        </div>
+
+        <!-- ÚJ: VÁRAKOZÓ NÉZET (rejtett) -->
+        <div id="waiting-view" class="hidden">
+            <div class="card rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+                <h1 class="text-3xl font-bold text-center text-yellow-400">Fizetés ellenőrzés alatt</h1>
+                <div class="flex justify-center py-4">
+                    <div class="waiting-spinner"></div>
+                </div>
+                <p class="text-center text-gray-400">Adminisztrátoraink hamarosan ellenőrzik a befizetésed.</p>
+                <p class="text-sm text-gray-500">Ez az oldal automatikusan frissülni fog jóváhagyás után.</p>
+                <button id="logout-from-wait-btn" class="text-center w-full text-sm text-gray-400 hover:text-white pt-4">Kijelentkezés</button>
+            </div>
+        </div>
+        
+        <!-- ÚJ: ELUTASÍTVA NÉZET (rejtett) -->
+        <div id="rejected-view" class="hidden">
+            <div class="card rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+                <h1 class="text-3xl font-bold text-center text-red-400">Fizetés elutasítva</h1>
+                <p class="text-center text-gray-400">A befizetés elutasítva. A megadott dokumentumok/információk (pl. e-mail bizonylat) nem voltak megfelelőek.</p>
+                <p class="text-sm text-gray-500">Kérjük, ellenőrizd az adatokat, vagy vedd fel velünk a kapcsolatot a megadott e-mail címen.</p>
+                <button id="back-to-login-from-rejected-btn" class="w-full btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center mt-4">Vissza a bejelentkezéshez</Gomb>
             </div>
         </div>
 
@@ -137,6 +167,7 @@
                      <button id="user-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
                  </div>
                  <p class="text-gray-400 text-sm">Üdvözöljük, <span id="user-name-display" class="font-bold text-white">Vendég</span>!</p>
+                 <p class="text-center text-green-400 text-sm h-4">Sikeresen elfogadtuk a dokumentumát, mától biztos tippeket fog kapni!</p>
 
                  <!-- FŐ TIPP SZEKCIÓ (Kép és Szöveg) -->
                  <div id="free-tip-section" class="space-y-4">
@@ -157,12 +188,22 @@
 
         <!-- ADMIN NÉZET (rejtett) -->
         <div id="admin-view" class="hidden">
-             <div class="card rounded-2xl p-8 shadow-2xl space-y-6">
+             <div class="card rounded-2xl p-8 shadow-2xl space-y-6 max-w-full">
                  <div class="flex justify-between items-center">
-                     <h1 class="text-3xl font-bold text-orange-400">Admin Felület (Kép & Szöveg)</h1>
+                     <h1 class="text-3xl font-bold text-orange-400">Admin Felület</h1>
                      <button id="admin-logout-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Kilépés</button>
                  </div>
                  <p id="admin-message" class="text-center text-green-400 h-4"></p>
+
+                <!-- ÚJ: FÜGGŐBEN LÉVŐ JÓVÁHAGYÁSOK -->
+                 <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                     <h2 class="text-xl font-semibold text-yellow-400">Függőben lévő jóváhagyások</h2>
+                     <div id="pending-users-container" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+                         <p class="text-center text-gray-500">Nincsenek függőben lévő fizetések.</p>
+                         <!-- Dinamikus tartalom helye -->
+                     </div>
+                 </div>
+                 <!-- VÉGE: FÜGGŐBEN LÉVŐ JÓVÁHAGYÁSOK -->
                  
                  <!-- KIEMELT TIPP BEÁLLÍTÁSA -->
                  <div class="space-y-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
@@ -196,15 +237,14 @@
         import { 
             getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
             createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut
-            // updateProfile ELTÁVOLÍTVA
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
-            getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs, deleteDoc, orderBy 
+            getFirestore, doc, setDoc, onSnapshot, collection, query, getDocs, deleteDoc, updateDoc, where 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // === GLOBÁLIS VÁLTOZÓK ÉS FIREBASE INICIALIZÁLÁS ===
         
-        // ADMIN BELÉPÉSI ADATOK (Titkos felülírás az Ön kérésére)
+        // ADMIN BELÉPÉSI ADATOK
         const ADMIN_EMAIL_OVERRIDE = "felhasznalo";
         const ADMIN_PASSWORD_OVERRIDE = "biztonság jelszo tippek";
 
@@ -212,15 +252,9 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         let db, auth, userId = null;
         let isAuthReady = false;
+        let paymentStatusListener = null; // ÚJ: Globális listener a fizetési státuszhoz
 
         // Firebsae konfiguráció betöltése
-        // === FIREBASE KONFIGURÁCIÓ ===
-        // A Vercel (vagy GitHub Pages) futtatáshoz másold ide
-        // a Firebase Konzolból kapott 'firebaseConfig' objektumot.
-        // FONTOS: Ez GitHub-on publikussá teszi a kulcsaidat!
-        // Csak demo/teszt célra használd.
-        
-        // IDE MÁSOLD A KONFIGOT (ha nem Canvas-ban futtatod):
         const manualFirebaseConfig = {
           apiKey: "AIzaSyAr-yMNGRkM9WOqnUa-Um3wwRFDRZICr1A",
           authDomain: "biztonsagos-tippek-projekt.firebaseapp.com",
@@ -229,18 +263,7 @@
           messagingSenderId: "857092685171",
           appId: "1:857092685171:web:4abc6d145558da2f569906"
         }; 
-        // Például:
-        // const manualFirebaseConfig = {
-        //   apiKey: "AIza...",
-        //   authDomain: "projekt-neve.firebaseapp.com",
-        //   projectId: "projekt-neve",
-        //   storageBucket: "projekt-neve.appspot.com",
-        //   messagingSenderId: "123456789",
-        //   appId: "1:123456789:web:abcd..."
-        // };
 
-        // A kód ellenőrzi, hogy a Canvas-ból (__) kap-e adatot, 
-        // vagy a manuálisan beírtat (manualFirebaseConfig) kell-e használnia.
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : manualFirebaseConfig;
@@ -248,13 +271,18 @@
         // Firestore Collection Path-ok
         const FREE_TIP_DOC_PATH = `artifacts/${appId}/public/data/secure-tips/free_tip`;
         const CARD_TIPS_COLLECTION_PATH = `artifacts/${appId}/public/data/secure-tips`;
+        // ÚJ: Fizetési státuszok gyűjteménye
+        // JAVÍTVA: Hozzáadva a hiányzó "/data/" szegmens
+        const PENDING_PAYMENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/pendingPayments`;
 
         // === DOM ELEMEK ===
         const appStatus = document.getElementById('app-status');
         // Nézetek
         const loginView = document.getElementById('login-view');
         const registerView = document.getElementById('register-view');
-        const paymentView = document.getElementById('payment-view'); // ÚJ
+        const paymentView = document.getElementById('payment-view');
+        const waitingView = document.getElementById('waiting-view'); // ÚJ
+        const rejectedView = document.getElementById('rejected-view'); // ÚJ
         const dashboardView = document.getElementById('dashboard-view');
         const adminView = document.getElementById('admin-view');
 
@@ -265,10 +293,10 @@
         const loginBtnText = document.getElementById('login-btn-text');
         const loginSpinner = document.getElementById('login-spinner');
         const loginMessage = document.getElementById('login-message');
+        const expiryMessage = document.getElementById('expiry-message'); // ÚJ
         const toRegisterBtn = document.getElementById('to-register-btn');
 
         // Register
-        // regNameInput ELTÁVOLÍTVA
         const regEmailInput = document.getElementById('reg-email-input');
         const regPasswordInput = document.getElementById('reg-password-input');
         const registerBtn = document.getElementById('register-btn');
@@ -277,12 +305,17 @@
         const registerMessage = document.getElementById('register-message');
         const backToLoginBtnReg = document.getElementById('back-to-login-btn-reg');
         
-        // Payment (MÓDOSÍTVA)
+        // Payment
         const payBtn = document.getElementById('pay-btn');
         const payBtnText = document.getElementById('pay-btn-text');
         const paySpinner = document.getElementById('pay-spinner');
         const backToLoginBtnPay = document.getElementById('back-to-login-btn-pay');
-        const paymentUserId = document.getElementById('payment-user-id'); // ÚJ
+        
+        // Waiting
+        const logoutFromWaitBtn = document.getElementById('logout-from-wait-btn'); // ÚJ
+
+        // Rejected
+        const backToLoginFromRejectedBtn = document.getElementById('back-to-login-from-rejected-btn'); // ÚJ
 
         // Dashboard
         const userNameDisplay = document.getElementById('user-name-display');
@@ -294,6 +327,7 @@
         // Admin
         const adminLogoutBtn = document.getElementById('admin-logout-btn');
         const adminMessage = document.getElementById('admin-message');
+        const pendingUsersContainer = document.getElementById('pending-users-container'); // ÚJ
         const freeTipForm = document.getElementById('free-tip-form');
         const freeTipTextInput = document.getElementById('free-tip-text-input');
         const freeTipImageInput = document.getElementById('free-tip-image-input');
@@ -307,14 +341,17 @@
 
         function showView(viewToShow) {
             // Elrejti az összes nézetet, majd mutatja a kért nézetet
-            [loginView, registerView, dashboardView, adminView, paymentView].forEach(view => view.classList.add('hidden')); // Bővítve paymentView-val
+            [loginView, registerView, dashboardView, adminView, paymentView, waitingView, rejectedView].forEach(view => view.classList.add('hidden'));
             viewToShow.classList.remove('hidden');
         }
 
         function showMessage(element, text, isError = false) {
             element.textContent = text;
             element.className = `text-center text-sm h-4 ${isError ? 'text-red-400' : 'text-green-400'}`;
-            setTimeout(() => { element.textContent = ''; }, 4000);
+            // Ne tűnjön el, ha lejáratról szól
+            if (element.id !== 'expiry-message') {
+                 setTimeout(() => { element.textContent = ''; }, 4000);
+            }
         }
 
         function setButtonLoading(button, textElement, spinnerElement, isLoading) {
@@ -343,23 +380,69 @@
                     await signInAnonymously(auth);
                 }
                 
-                // Auth állapot figyelése
+                // Auth állapot figyelése (TELJESEN ÁTÍRVA)
                 onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        // A megjelenített név frissítése, e-mailt használ, ha nincs név
-                        userNameDisplay.textContent = user.displayName || user.email || 'Vendég';
-                        // ÚJ: Fizetési közlemény mező kitöltése
-                        if(paymentUserId) {
-                            paymentUserId.value = userId;
-                        }
-                    } else {
-                        userId = null;
+                    // Először minden listenert törlünk
+                    if (paymentStatusListener) {
+                        paymentStatusListener();
+                        paymentStatusListener = null;
                     }
-                    isAuthReady = true;
-                    startListeners(); // Adatbázis figyelés indítása
-                    if (!user || user.isAnonymous) {
-                        showView(loginView); // Alapértelmezett nézet
+                    
+                    if (user && !user.isAnonymous) {
+                        userId = user.uid;
+                        userNameDisplay.textContent = user.email; // Név már nincs
+
+                        // ADMIN ELLENŐRZÉS
+                        if (user.email === ADMIN_EMAIL_OVERRIDE) {
+                             // Az admin check most már a bejelentkezett felhasználó emailje alapján történik
+                             // A login gombnál továbbra is ott a jelszavas bypass
+                             startAdminListeners();
+                             showView(adminView);
+                             return;
+                        }
+
+                        // NORMÁL FELHASZNÁLÓ: Fizetési státusz figyelése
+                        const userStatusDocRef = doc(db, PENDING_PAYMENTS_COLLECTION_PATH, user.uid);
+                        
+                        paymentStatusListener = onSnapshot(userStatusDocRef, (docSnap) => {
+                            const data = docSnap.data();
+                            
+                            if (!data) {
+                                // Még soha nem fizetett
+                                showMessage(expiryMessage, '', false);
+                                showView(paymentView);
+                                return;
+                            }
+
+                            switch (data.status) {
+                                case 'pending':
+                                    showView(waitingView);
+                                    break;
+                                case 'rejected':
+                                    showView(rejectedView);
+                                    break;
+                                case 'approved':
+                                    const expiryDate = data.expiryDate || 0;
+                                    if (expiryDate > Date.now()) {
+                                        // Aktív előfizetés
+                                        startUserListeners(); // Tippek betöltése
+                                        showView(dashboardView);
+                                    } else {
+                                        // Lejárt előfizetés
+                                        showMessage(expiryMessage, 'Előfizetése lejárt. Kérjük, fizessen elő újra.', true);
+                                        showView(paymentView);
+                                    }
+                                    break;
+                                default:
+                                    // Ismeretlen státusz
+                                    showView(paymentView);
+                            }
+                        });
+
+                    } else {
+                        // Kijelentkezve vagy anonim
+                        userId = null;
+                        showView(loginView);
                     }
                 });
 
@@ -372,39 +455,120 @@
             }
         }
         
-        function startListeners() {
+        // Külön listener a felhasználói tippeknek
+        function startUserListeners() {
             if (!db || !isAuthReady) return;
 
             // 1. Kiemelt tipp figyelése (Free Tip)
             onSnapshot(doc(db, FREE_TIP_DOC_PATH), (docSnap) => {
                 const data = docSnap.data() || { text: 'Nincs beállított kiemelt tipp.', imageUrl: '' };
                 freeTipText.textContent = data.text;
-                freeTipImage.src = data.imageUrl;
-                freeTipImage.style.display = data.imageUrl ? 'block' : 'none';
-
-                // Admin mezők frissítése
+                // ... (többi listener)
+            });
+            // 2. Tipp kártyák figyelése
+            const q = query(collection(db, CARD_TIPS_COLLECTION_PATH));
+            onSnapshot(q, (snapshot) => {
+                const tips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                tips.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); 
+                renderUserCards(tips);
+            });
+        }
+        
+        // Külön listenerek az adminnak
+        function startAdminListeners() {
+            if (!db || !isAuthReady) return;
+            
+            // 1. Admin tippek (rendereléshez)
+            const qTips = query(collection(db, CARD_TIPS_COLLECTION_PATH));
+            onSnapshot(qTips, (snapshot) => {
+                const tips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                tips.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); 
+                renderAdminCards(tips);
+            });
+            
+            // 2. Kiemelt tipp (mezők kitöltéséhez)
+             onSnapshot(doc(db, FREE_TIP_DOC_PATH), (docSnap) => {
+                const data = docSnap.data() || { text: 'Nincs beállított kiemelt tipp.', imageUrl: '' };
                 freeTipTextInput.value = data.text;
                 freeTipImageInput.value = data.imageUrl;
             });
 
-            // 2. Tipp kártyák figyelése
-            // A CARD_TIPS_COLLECTION_PATH (5 szegmens) a gyűjtemény útvonala.
-            const q = query(collection(db, CARD_TIPS_COLLECTION_PATH));
-
-            onSnapshot(q, (snapshot) => {
-                // Lekérdezés után manuálisan rendezzük időbélyeg szerint, ha szükséges
-                const tips = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // A Firestore lekérdezésben nem használunk orderBy-t indexelési hiba miatt,
-                // ezért itt rendezünk (ha van timestamp)
-                tips.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)); 
-                
-                renderUserCards(tips);
-                renderAdminCards(tips);
+            // 3. ÚJ: Függőben lévő fizetések figyelése
+            const qPending = query(collection(db, PENDING_PAYMENTS_COLLECTION_PATH), where("status", "==", "pending"));
+            onSnapshot(qPending, (snapshot) => {
+                renderAdminPendingList(snapshot.docs);
             });
         }
 
 
         // === ADMIN / UI RENDER FÜGGVÉNYEK ===
+
+        // ÚJ: Admin - Függőben lévő lista renderelése
+        function renderAdminPendingList(docs) {
+            if (docs.length === 0) {
+                 pendingUsersContainer.innerHTML = '<p class="text-center text-gray-500">Nincsenek függőben lévő fizetések.</p>';
+                 return;
+            }
+            
+            pendingUsersContainer.innerHTML = '';
+            docs.forEach(doc => {
+                const data = doc.data();
+                pendingUsersContainer.innerHTML += `
+                    <div class="bg-gray-700 p-3 rounded-lg flex justify-between items-center">
+                        <div class="flex-1 pr-4">
+                            <p class="text-white text-sm font-medium">${data.email || 'Ismeretlen e-mail'}</p>
+                            <p class="text-gray-400 text-xs font-mono">${doc.id}</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="approvePayment('${doc.id}')" class="btn bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                <!-- Pipa SVG -->
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                            </button>
+                            <button onclick="rejectPayment('${doc.id}')" class="btn bg-red-600 hover:bg-red-700 text-white p-2 rounded-full">
+                                <!-- X SVG -->
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        // ÚJ: Admin - Fizetés jóváhagyása
+        window.approvePayment = async function(userId) {
+            if (!db) return;
+            const docRef = doc(db, PENDING_PAYMENTS_COLLECTION_PATH, userId);
+            const expiryDate = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 nap
+            try {
+                await updateDoc(docRef, {
+                    status: 'approved',
+                    expiryDate: expiryDate,
+                    approvedAt: Date.now()
+                });
+                showMessage(adminMessage, 'Felhasználó jóváhagyva!');
+            } catch (e) {
+                showMessage(adminMessage, 'Hiba a jóváhagyás során.', true);
+            }
+        }
+
+        // ÚJ: Admin - Fizetés elutasítása
+        window.rejectPayment = async function(userId) {
+             if (!db) return;
+            const docRef = doc(db, PENDING_PAYMENTS_COLLECTION_PATH, userId);
+             try {
+                await updateDoc(docRef, {
+                    status: 'rejected'
+                });
+                showMessage(adminMessage, 'Felhasználó elutasítva.');
+            } catch (e) {
+                showMessage(adminMessage, 'Hiba az elutasítás során.', true);
+            }
+        }
+
 
         function renderAdminCards(tips) {
             cardsContainer.innerHTML = tips.length === 0 ? '<p class="text-center text-gray-500">Még nincs létrehozott kártya.</p>' : '';
@@ -448,16 +612,33 @@
         // Nézetváltók
         toRegisterBtn.addEventListener('click', () => showView(registerView));
         backToLoginBtnReg.addEventListener('click', () => showView(loginView));
+        backToLoginFromRejectedBtn.addEventListener('click', () => {
+            // Nem kell signOut, mert a státusz elutasítva, 
+            // de a biztonság kedvéért kijelentkeztetjük
+            signOut(auth);
+            showView(loginView);
+        });
         
-        // ÚJ: Vissza a loginhez a fizetési oldalról (kijelentkezés)
-        backToLoginBtnPay.addEventListener('click', async () => {
+        // Kijelentkezés gombok (mindegyik)
+        const logoutHandler = async () => {
+             if (paymentStatusListener) {
+                paymentStatusListener();
+                paymentStatusListener = null;
+             }
              await signOut(auth);
              showView(loginView);
-        });
+             showMessage(expiryMessage, '', false); // Törli a lejárat üzenetet
+        };
+        
+        backToLoginBtnPay.addEventListener('click', logoutHandler);
+        logoutFromWaitBtn.addEventListener('click', logoutHandler);
+        userLogoutBtn.addEventListener('click', logoutHandler);
+        adminLogoutBtn.addEventListener('click', logoutHandler); // Adminnak is signOut kell
 
         // Bejelentkezés
         loginBtn.addEventListener('click', async () => {
             loginMessage.textContent = '';
+            expiryMessage.textContent = ''; // Törli a lejárat üzenetet
             const email = loginEmailInput.value.trim();
             const password = loginPasswordInput.value;
 
@@ -468,7 +649,25 @@
 
             // ADMIN FELÜLÍRÁS (Titkos belépés)
             if (email === ADMIN_EMAIL_OVERRIDE && password === ADMIN_PASSWORD_OVERRIDE) {
-                showView(adminView);
+                // Itt még nem tudjuk, hogy az email létezik-e,
+                // ezért bypass-t csinálunk, DE be is léptetjük, hogy az Auth listener elkapja
+                 try {
+                     await signInWithEmailAndPassword(auth, email, password);
+                     // Az onAuthStateChanged listener innentől átveszi
+                 } catch (e) {
+                      // Ha az admin fiók még nem létezik a Firebase Auth-ban
+                     if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+                         showMessage(loginMessage, 'Admin fiók regisztrálása... (Első belépés)', false);
+                         try {
+                            await createUserWithEmailAndPassword(auth, email, password);
+                            // Az onAuthStateChanged listener innentől átveszi
+                         } catch (regError) {
+                            showMessage(loginMessage, 'Admin regisztrációs hiba: ' + regError.message, true);
+                         }
+                     } else {
+                        showMessage(loginMessage, 'Admin belépési hiba: ' + e.message, true);
+                     }
+                 }
                 return;
             }
 
@@ -476,17 +675,16 @@
             
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                // MÓDOSÍTVA: Irányítás a fizetési oldalra
-                showView(paymentView); 
+                // Az onAuthStateChanged listener innentől átveszi az irányítást
+                // (ellenőrzi a státuszt és a megfelelő view-ra irányít)
             } catch (error) {
-                // MÓDOSÍTOTT HIBAKEZELÉS
                 let hibaUzenet = 'Bejelentkezési hiba: ';
                 if (error.code === 'auth/invalid-email') {
                     hibaUzenet += 'Érvénytelen e-mail cím formátum.';
-                } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                } else if (error.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
                     hibaUzenet += 'Érvénytelen e-mail vagy jelszó.';
                 } else {
-                    hibaUzenet += error.message; // Egyéb hibák kiírása
+                    hibaUzenet += error.message; 
                 }
                 showMessage(loginMessage, hibaUzenet, true);
             } finally {
@@ -494,28 +692,27 @@
             }
         });
 
-        // Regisztráció (MÓDOSÍTVA)
+        // Regisztráció
         registerBtn.addEventListener('click', async () => {
             registerMessage.textContent = '';
-            // const name ELTÁVOLÍTVA
             const email = regEmailInput.value.trim();
             const password = regPasswordInput.value;
 
-            // Validáció módosítva (név nélkül)
             if (!email || password.length < 6) {
                 showMessage(registerMessage, 'Kérlek, töltsd ki az e-mail és jelszó mezőt (jelszó min. 6).', true);
+                return;
+            }
+            
+            // Tiltott admin regisztráció
+            if (email === ADMIN_EMAIL_OVERRIDE) {
+                showMessage(registerMessage, 'Ez az e-mail cím foglalt.', true);
                 return;
             }
 
             setButtonLoading(registerBtn, registerBtnText, registerSpinner, true);
 
             try {
-                // Felhasználó létrehozása
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                
-                // updateProfile hívás ELTÁVOLÍTVA
-                
-                // MÓDOSÍTVA: A felhasználó a login oldalra kerül, hogy bejelentkezzen és lássa a fizetési oldalt
+                await createUserWithEmailAndPassword(auth, email, password);
                 showMessage(loginMessage, 'Sikeres regisztráció! Lépj be a fiókoddal.', false);
                 showView(loginView);
             } catch (error) {
@@ -534,38 +731,44 @@
             }
         });
 
-        // MÓDOSÍTVA: "Fizetés" gomb (most már csak továbbenged)
+        // Fizetési gomb ("Kész vagyok")
         payBtn.addEventListener('click', async () => {
             setButtonLoading(payBtn, payBtnText, paySpinner, true);
             
-            // Itt egy valós alkalmazásban várnánk a manuális megerősítésre,
-            // de ebben a demo-ban 1.5s után továbbengedjük, mintha fizetett volna.
-            await new Promise(resolve => setTimeout(resolve, 1500)); 
+            if (!userId || !auth.currentUser) {
+                 showMessage(loginMessage, 'Hiba: Nincs bejelentkezve felhasználó.', true);
+                 setButtonLoading(payBtn, payBtnText, paySpinner, false);
+                 showView(loginView);
+                 return;
+            }
             
-            // Sikeres "fizetés" után irányítás a főoldalra
-            showView(dashboardView);
-            setButtonLoading(payBtn, payBtnText, paySpinner, false);
+            const userStatusDocRef = doc(db, PENDING_PAYMENTS_COLLECTION_PATH, userId);
+
+            try {
+                // Létrehozza vagy felülírja a státuszt 'pending'-re
+                await setDoc(userStatusDocRef, {
+                    status: 'pending',
+                    email: auth.currentUser.email,
+                    submittedAt: Date.now()
+                }, { merge: true }); // Merge, hogy ne írja felül a lejáratot, ha már létezett
+                
+                // Az onAuthStateChanged listener automatikusan a waiting-view-ra fog váltani
+                
+            } catch (e) {
+                 console.error("Hiba a fizetési státusz beállításakor:", e);
+                 // Itt maradt a fizetési oldalon
+            } finally {
+                 setButtonLoading(payBtn, payBtnText, paySpinner, false);
+            }
         });
 
-        // Kijelentkezés
-        userLogoutBtn.addEventListener('click', async () => {
-            await signOut(auth);
-            showView(loginView);
-        });
-        adminLogoutBtn.addEventListener('click', async () => {
-            // Az admin felülírás miatt egyszerűen csak a bejelentkezési oldalra visz
-            // Ha az admin Firebase fiókkal lépne be, itt is signOut kellene
-            showView(loginView);
-        });
 
         // Admin: Kiemelt tipp mentése
         freeTipForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!db) return;
-
             const tipText = freeTipTextInput.value.trim();
             const imageUrl = freeTipImageInput.value.trim();
-
             try {
                 await setDoc(doc(db, FREE_TIP_DOC_PATH), { 
                     text: tipText || 'Nincs beállított kiemelt tipp.', 
@@ -582,17 +785,13 @@
         newCardForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!db) return;
-
             const tipText = cardTextInput.value.trim();
             const imageUrl = cardImageInput.value.trim();
-            
             if (!tipText) {
                 showMessage(adminMessage, 'A tipp szövege kötelező!', true);
                 return;
             }
-
             try {
-                // setDoc és doc(collection(...)) kombinációja új, egyedi ID-s dokumentumot hoz létre
                 await setDoc(doc(collection(db, CARD_TIPS_COLLECTION_PATH)), {
                     text: tipText, 
                     imageUrl: imageUrl,
@@ -610,4 +809,5 @@
     </script>
 </body>
 </html>
+
 
